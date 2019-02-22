@@ -26,7 +26,7 @@ class Match3NN:
         Make a move based on the current state of the game
         '''
         move = self._model.predict([np.array(game_state.board)])
-        self.game_state.advance_state(move[0], move[1])
+        self.game_state.advance_state(_move_array[move,0], _move_array[move,1])
     
     def _make_board_model():
         '''
