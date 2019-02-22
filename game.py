@@ -13,7 +13,7 @@ NULL_GEM = -1
 GEM_NUM_FOR_MATCH = 3
 SEED = 7
 class GameState:
-    def __init__(self,rows,cols,gem_type_count,rand_state):
+    def __init__(self,rows,cols,gem_type_count,rand_state=random.getstate()):
         self.rand_state = rand_state
             #saved state of random number generator
         self.gem_type_count = gem_type_count
@@ -57,7 +57,7 @@ class GameState:
             if len(remove_set) > 0:
                 for i,j in remove_set:
                     self.board[i,j] = NULL_GEM
-                self.print_board()
+                #self.print_board()
                 self._settle_board()
             self.gems_matched += len(remove_set)
             self.score += len(remove_set)

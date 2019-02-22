@@ -35,11 +35,12 @@ if __name__ == "__main__":
     g = GameState(8,8,7,state)
 
     while(g.turn_num < turn_limit):
+        '''
         print("\nTurn #"+str(g.turn_num))
         g.print_board()
         print("Gems Matched: " + str(g.gems_matched))
+        '''
         p1,p2,ai_state = get_random_pair(g.rows,g.cols,ai_state)
-        print(p1,p2)
-        g.advance_state((p1[0],p1[1]),(p2[0],p2[1]))
+        g.advance_state(p1,p2)
     print("Loop exit")
     print("Score was " + str(g.score))
