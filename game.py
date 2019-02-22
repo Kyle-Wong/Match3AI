@@ -161,16 +161,46 @@ class GameState:
         self.rand_state = random.getstate()
         return result
 
-                
+
+def get_all_pairs(rows,cols):
+    result_set = set()
+    for i in range(0,rows):
+        for j in range(0,cols):
+            get_adjacent_points((i,j),rows,cols,result_set)
+    return result_set
+    
+    
+def get_adjacent_points(p1,rows,cols,result_set):
+    if p1[0]-1 >= 0:
+        swap = (p1[0]-1,p1[1])
+        if not swap_in_set((p1,swap),result_set):
+            result_set.add((p1,swap))
+    if p1[0]+1 < rows:
+        swap = (p1[0]+1,p1[1])
+        if not swap_in_set((p1,swap),result_set):
+            result_set.add((p1,swap))
+    if p1[1]-1 >= 0:
+        swap = (p1[0],p1[1]-1)
+        if not swap_in_set((p1,swap),result_set):
+            result_set.add((p1,swap))
+    if p1[1]+1 < cols:
+        swap = (p1[0],p1[1]+1)
+        if not swap_in_set((p1,swap),result_set):
+            result_set.add((p1,swap))
+def swap_in_set(swap,swap_set):
+    return (swap[0],swap[1]) in swap_set or (swap[1],swap[0]) in swap_set
+
 if __name__ == "__main__":
+    
     random.seed(SEED)
     state = random.getstate()
     g = GameState(8,8,7,state)
     #f = GameState(6,6,4,state)
-
+    
     text = ""
     while(text != 'quit'):
         print("\nTurn #"+str(g.turn_num))
+
         g.print_board()
         print("Gems Matched: " + str(g.gems_matched))
         
