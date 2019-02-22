@@ -60,6 +60,7 @@ class GameState:
                 self.print_board()
                 self._settle_board()
             self.gems_matched += len(remove_set)
+            self.score += len(remove_set)
             first_iteration = False
         
         
