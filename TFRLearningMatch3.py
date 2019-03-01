@@ -3,11 +3,14 @@ import numpy as np
 import random
 import gym
 import math
+import matplotlib.pyplot as plt
+import game
+from game import GameState	
 
 BATCH_SIZE = 5
-MAX_EPSILON = 0.9
+MAX_EPSILON = 1
 MIN_EPSILON = 0.01
-LAMBDA = 1
+LAMBDA = 0.01
 GAMMA = 0.5
 
 class Model:
@@ -75,17 +78,19 @@ class GameRunner:
         self._decay = decay
         self._eps = self._max_eps
         self._steps = 0
-        self._reward_store = []
+        self.reward_store = []
+        self._moves = game.get_all_pairs(self._env.rows, self._env.cols)
 
     def run(self):
-        state = self._env.board
+        state = np.reshape(self._env.board, (1,-1))[0]
         tot_reward = 0
         while True:
             if self._render:
                 self._env.print_board()
 
             action = self._choose_action(state)
-            next_state, reward, done, info = self._env.advance_state(action)
+            next_state, reward, done = self._env.advance_state(self._moves[action][0], self._moves[action][1])
+            next_state = np.reshape(next_state, (1,-1))[0]
 
             self._memory.add_sample((state, action, reward, next_state))
             self._replay()
@@ -101,10 +106,11 @@ class GameRunner:
 
             # if the game is done, break the loop
             if done:
-                self._reward_store.append(tot_reward)
+                self.reward_store.append(tot_reward)
                 break
 
         print("Step {}, Total reward: {}, Eps: {}".format(self._steps, tot_reward, self._eps))
+        self._env.print_board()
 
     def _choose_action(self, state):
         if random.random() < self._eps:
@@ -140,11 +146,10 @@ class GameRunner:
         self._model.train_batch(self._sess, x, y)
     
 if __name__ == "__main__":
-    env_name = 'MountainCar-v0'
-    env = gym.make(env_name)
+    env = GameState(8, 8, 8, 0)
 
-    num_states = env.env.observation_space.shape[0]
-    num_actions = env.env.action_space.n
+    num_states = env.cols * env.rows
+    num_actions = env.cols * (env.rows - 1) + env.rows * (env.cols - 1)
 
     model = Model(num_states, num_actions, BATCH_SIZE)
     mem = Memory(50000)
@@ -163,5 +168,4 @@ if __name__ == "__main__":
         plt.plot(gr.reward_store)
         plt.show()
         plt.close("all")
-        plt.plot(gr.max_x_store)
         plt.show()

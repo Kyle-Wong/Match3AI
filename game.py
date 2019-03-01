@@ -13,7 +13,7 @@ NULL_GEM = -1
 GEM_NUM_FOR_MATCH = 3
 SEED = 7
 class GameState:
-    def __init__(self,rows,cols,gem_type_count,rand_state=random.getstate()):
+    def __init__(self,rows,cols,gem_type_count,turn_limit,rand_state=random.getstate()):
         self.rand_state = rand_state
             #saved state of random number generator
         self.gem_type_count = gem_type_count
@@ -26,15 +26,19 @@ class GameState:
             #Raw number of gems cleared through matching
         self.turn_num = 0
             #each swap increments turn_num
+        self.turn_limit = turn_limit
+            #number of turns before determined to be "done"
         self.board = np.zeros((rows,cols),dtype=int)
-        self.randomize_board()
-        
-       
+        self.randomize_board()     
             
     def advance_state(self,p1,p2):
         self._swap(p1,p2)
-        self._process_matches()
+        reward = self._process_matches() + self._evaluate_board()
         self.turn_num += 1
+
+        next_state = self.board
+        done = self.turn_num >= self.turn_limit
+        return self.board, reward, done
 
     def _swap(self,p1,p2):
         if not self.valid(p1,p2):
@@ -42,7 +46,6 @@ class GameState:
         t = self.board[p1[0]][p1[1]]
         self.board[p1[0]][p1[1]] = self.board[p2[0]][p2[1]]
         self.board[p2[0]][p2[1]] = t
-        
 
     def print_board(self):
         print(self.board)
@@ -50,6 +53,7 @@ class GameState:
     def _process_matches(self):
         first_iteration= True
         remove_set = set()
+        prev_matches = self.gems_matched
         while(first_iteration or len(remove_set) > 0):
             remove_set = set()
             self._get_vertical_matches(remove_set)
@@ -62,6 +66,8 @@ class GameState:
             self.gems_matched += len(remove_set)
             self.score += len(remove_set)
             first_iteration = False
+
+        return self.gems_matched - prev_matches
         
         
     def _get_vertical_matches(self,remove_set):
@@ -143,6 +149,21 @@ class GameState:
             temp = self.board[p[0]-1,p[1]]
             self.board[p[0]-1,p[1]] = NULL_GEM
             return temp
+
+    def _evaluate_board(self):
+        '''
+        Return a utility measurement for the current board
+        Currently, returns the number of pairs of equal, adjacent gems
+        '''
+        result = 0
+        for i in range(self.rows):
+            for j in range(self.cols):
+                if i < self.rows - 1 and self.board[i,j] == self.board[i+1,j]:
+                    result += 1
+                if j < self.cols - 1 and self.board[i,j] == self.board[i,j+1]:
+                    result += 1
+
+        return result
         
     def randomize_board(self):
         for i in range(0,self.rows):
@@ -167,7 +188,10 @@ def get_all_pairs(rows,cols):
     for i in range(0,rows):
         for j in range(0,cols):
             get_adjacent_points((i,j),rows,cols,result_set)
-    return result_set
+    result = list(result_set)
+    result.sort(key = lambda x : x[1])
+    result.sort(key = lambda x : x[0])
+    return result
     
     
 def get_adjacent_points(p1,rows,cols,result_set):
