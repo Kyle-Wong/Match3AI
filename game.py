@@ -55,21 +55,24 @@ class GameState:
         remove_set = set()
         prev_matches = self.gems_matched
         while(first_iteration or len(remove_set) > 0):
-            remove_set = set()
-            self._get_vertical_matches(remove_set)
-            self._get_horizontal_matches(remove_set)
+            remove_set = self.get_matches()
             if len(remove_set) > 0:
-                for i,j in remove_set:
-                    self.board[i,j] = NULL_GEM
-                #self.print_board()
-                self._settle_board()
+                self.remove_null_gems(remove_set)
             self.gems_matched += len(remove_set)
             self.score += len(remove_set)
             first_iteration = False
 
         return self.gems_matched - prev_matches
         
-        
+    def get_matches(self):
+        remove_set = set()
+        self._get_vertical_matches(remove_set)
+        self._get_horizontal_matches(remove_set)
+        return remove_set
+    def remove_null_gems(self,remove_set):
+        for i,j in remove_set:
+            self.board[i,j] = NULL_GEM
+        self._settle_board()
     def _get_vertical_matches(self,remove_set):
         '''
         Get all vertical matches of 3 or more and add the points to remove_set
