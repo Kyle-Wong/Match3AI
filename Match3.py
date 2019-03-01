@@ -6,8 +6,8 @@ import os.path
 from enum import Enum
 class State(Enum):
     STANDBY = 1
-    SWAP = 2
-    FALL = 3
+    CLEARING = 2
+    SETTLING = 3
 
 def load_sprites(folder):
     '''
@@ -45,6 +45,8 @@ class Match3:
         self.running = True
         self.state = State.STANDBY
         self.prev_move = None
+        self.prev_matches = 0
+        self.improvement = 0 #self.gems_matched - prev_matches
 
     def run(self):
         '''
@@ -70,24 +72,17 @@ class Match3:
                 self.running = False
         self._update_objects()
         if self.state is State.STANDBY:
-            print("STANDBY")
-        elif self.state is State.SWAP:
-            if not self._gems_moving():
-                remove_set = self.gs.get_matches()
-                if len(remove_set) > 0:
-                    self._match_gems(remove_set)
-                    self.copy_board_to_gs()
-                else:
-                    self.state = State.STANDBY
-            print("SWAPPING")
-        elif self.state is State.FALL:
-            if not self._gems_moving():
-                remove_set = self.gs.get_matches()
-                if len(remove_set) > 0:
-                    self._match_gems(remove_set)
-                    self.copy_board_to_gs()
-                else:
-                    self.state = State.STANDBY
+            pass
+        elif self.state is State.CLEARING:
+            if not self._gems_blocking():
+                match_set = self.gs.get_matches()
+                for p1 in match_set:
+                    self.gems[p1].clear()
+                self.state = State.SETTLING
+        elif self.state is State.SETTLING:
+            if not self._gems_blocking():
+                self.settle_step()
+       
         
     def draw(self):
         '''
@@ -107,12 +102,23 @@ class Match3:
         '''
         if self.state is not State.STANDBY:
             return
-        self.state = State.SWAP
+        self.state = State.CLEARING
+        self.prev_matches = self.gs.gems_matched
         self.gs._swap(p1,p2)
         self._swap_gems(p1,p2)
         self.prev_move = (p1,p2)
 
-    
+    def settle_step(self):
+        remove_set = self.gs.get_matches()
+        if len(remove_set) > 0:
+            self._match_gems(remove_set)
+            self.copy_board_to_gs()
+            self.gs.gems_matched += len(remove_set)
+            self.gs.score += len(remove_set)
+            self.state = State.CLEARING
+        else:
+            self.state = State.STANDBY
+            self.improvement = self.gs.gems_matched-self.prev_matches
     def _swap_gems(self,p1,p2):
         '''
         Swap gems in the gems matrix
@@ -164,13 +170,13 @@ class Match3:
         else:
             return p2
         
-    def _gems_moving(self):
+    def _gems_blocking(self):
         '''
         Checks if any gems are currently in motion (false is all animation is finished)
         '''
         for i in range(0,self.gs.rows):
             for j in range(0,self.gs.cols):
-                if not self.gems[i,j].on_tile:
+                if self.gems[i,j].blocking():
                     return True
         return False
         
@@ -182,6 +188,8 @@ class Match3:
             self.running = False
         if event.key == pygame.K_SPACE:
             self.advance_state((6,3),(6,4))
+        if event.key == pygame.K_r:
+            self.__init__(8,8,7,10,sprites,state)
     def _update_objects(self):
         for o in self.objects:
             o.update()
