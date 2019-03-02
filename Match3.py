@@ -15,7 +15,7 @@ def load_sprites(folder):
     Key is file name (without extensions) and Value is a Surface of the sprite.
     '''
     current_path = os.path.dirname(os.path.realpath(__file__))
-    sprite_path = os.path.join(current_path,"Sprites")
+    sprite_path = os.path.join(current_path,folder)
     sprites = {}
     for file in os.listdir(sprite_path):
         sprites[file.split('.')[0]] = pygame.image.load(os.path.join(sprite_path,file))
@@ -23,31 +23,45 @@ def load_sprites(folder):
     for s in sprites:
         print(s)
     return sprites
-
-GAMESEED = 111
+def load_fonts(folder):
+    '''
+    Loads all fonts in the Match3AI/Fonts folder into the Fonts dictionary.
+    Key is file name (without extensions) and Value is the Path to the Font file
+    '''
+    current_path = os.path.dirname(os.path.realpath(__file__))
+    font_path = os.path.join(current_path,folder)
+    fonts = {}
+    for file in os.listdir(font_path):
+        fonts[file.split('.')[0]] = os.path.join(font_path,file)
+    print("---------FONTS------------")
+    for f in fonts:
+        print(f)
+    return fonts
+GAMESEED = 111 #Static random number generator seed
 class Match3:
 
     def __init__(self,rows,cols,gem_type_count,turn_limit,sprites,rand_state = random.getstate()):
         self.sprites = sprites
-        self.gs = GameState(rows,cols,gem_type_count,turn_limit,rand_state)
-        self.p_width = 800
-        self.p_height = 600
+        self.gs = GameState(rows,cols,gem_type_count,turn_limit,rand_state) #GameState
+        self.p_width = 930 #Pixel width
+        self.p_height = 600 #Pixel height
         self.display = pygame.display.set_mode((self.p_width,self.p_height))
-        self.board_rect = pygame.Rect(150,0,500,500)
-        self.tile_w = self.board_rect.w/self.gs.cols
-        self.tile_h = self.board_rect.h/self.gs.rows
-        self.objects = []
+        self.board_rect = pygame.Rect(215,0,500,500) #Game board bounding box
+        self.tile_w = self.board_rect.w/self.gs.cols #Width of a board tile
+        self.tile_h = self.board_rect.h/self.gs.rows #Height of a board tile
+        self.objects = [] #List of objects w/ update() and draw() (currently none)
         self._initialize_board()
         pygame.display.set_caption('Match3')
-        self.surface = pygame.Surface((800,600))
-        self.clock = pygame.time.Clock()
-        self.delta_time = 0
-        self.running = True
-        self.state = State.STANDBY
-        self.prev_move = None
-        self.prev_matches = 0
+        self.surface = pygame.Surface((800,600)) #Surface to draw images/shapes on to"
+        self.clock = pygame.time.Clock() #Game block
+        self.delta_time = 0 #Seconds since last frame
+        self.running = True #Quit game if no longer running
+        self.state = State.STANDBY #Current game state
+        self.prev_move = None #( (p1.x,p1.y), (p2.x,p2.y) ) which is the last action taken
+        self.prev_matches = 0 #Gems matched prior to current action
         self.improvement = 0 #self.gems_matched - prev_matches
-
+        self.action_queue = [] #list of pairs ( (p1.x,p1.y), (p2.x,p2.y) ) to be
+                                #run sequentially as swaps in the game
     def run(self):
         '''
         Begin main loop, call update and draw each frame
@@ -72,7 +86,10 @@ class Match3:
                 self.running = False
         self._update_objects()
         if self.state is State.STANDBY:
-            pass
+            if len(self.action_queue) > 0:
+                p1,p2 = self.action_queue[0]
+                self.advance_state(p1,p2)
+                self.action_queue.pop(0)
         elif self.state is State.CLEARING:
             if not self._gems_blocking():
                 match_set = self.gs.get_matches()
@@ -89,10 +106,12 @@ class Match3:
         Call the draw method of every object
         '''
         self.surface = pygame.Surface((self.p_width,self.p_height))
-        self._draw_background(60,0)
+        self._draw_background(0,0)
         self._draw_board(self.board_rect.x,self.board_rect.y,self.board_rect.w,self.board_rect.h)
         self._draw_gems()
         self._draw_prev_move()
+        self._draw_turns_left(30,30,title_font)
+        self._draw_score(self.p_width-150,30,title_font)
         self.display.blit(self.surface,(0,0))
 
     def advance_state(self,p1,p2):
@@ -107,6 +126,7 @@ class Match3:
         self.gs._swap(p1,p2)
         self._swap_gems(p1,p2)
         self.prev_move = (p1,p2)
+        self.gs.turn_num += 1
 
     def settle_step(self):
         remove_set = self.gs.get_matches()
@@ -245,7 +265,28 @@ class Match3:
         x += offset_x
         y += offset_y
         self.surface.blit(self.sprites['background'],(x,y))
+    def _draw_turns_left(self,x,y,font):
+        text = "Moves Left:"
+        surface = title_font.render(text,True,pygame.Color(0,0,0))
+        text_dim = title_font.size(text)
+        self.surface.blit(surface,pygame.Rect(x,y,text_dim[0],text_dim[1]))
 
+        text = str(self.gs.turn_limit-self.gs.turn_num)
+        surface = title_font.render(text,True,pygame.Color(0,0,0))
+        text_dim = title_font.size(text)
+        self.surface.blit(surface,pygame.Rect(x,y+40,text_dim[0],text_dim[1]))        
+
+    def _draw_score(self,x,y,font):
+        text = "Score:"
+        surface = font.render(text,True,pygame.Color(0,0,0))
+        text_dim = font.size(text)
+        self.surface.blit(surface,pygame.Rect(x,y,text_dim[0],text_dim[1]))
+
+        text = str(self.gs.gems_matched)
+        surface = font.render(text,True,pygame.Color(0,0,0))
+        text_dim = font.size(text)
+        self.surface.blit(surface,pygame.Rect(x,y+40,text_dim[0],text_dim[1]))
+    
     def _initialize_board(self):
         '''
         Spawn gem objects with correct sprite type
@@ -262,11 +303,15 @@ class Match3:
 
     
 if __name__ == "__main__":
-    sprites = load_sprites("Sprites")
     pygame.init()
-    random.seed(GAMESEED)
+    fonts = load_fonts("Fonts")
+    title_font = pygame.font.Font(fonts['OldSansBlack'],30)
+    sprites = load_sprites("Sprites")
+    random.seed(GAMESEED) #Set static seed
     state = random.getstate()
     game = Match3(8,8,7,10,sprites,state)
+    game.action_queue = [((6,3),(6,4))]
+    game.action_queue.append(((5,1),(5,2)))
     game.run()
     pygame.quit()
     quit()
