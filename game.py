@@ -173,7 +173,13 @@ class GameState:
                     result += 1
 
         return result
-        
+
+    def reset(self):
+        self.randomize_board()
+        self.turn_num = 0
+        self.rand_state = random.getstate()
+        return self.board
+    
     def randomize_board(self):
         for i in range(0,self.rows):
             for j in range(0,self.cols):
