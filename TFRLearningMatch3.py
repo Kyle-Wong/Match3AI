@@ -7,11 +7,12 @@ import matplotlib.pyplot as plt
 import game
 from game import GameState	
 
-BATCH_SIZE = 5
+BATCH_SIZE = 100
 MAX_EPSILON = 1
-MIN_EPSILON = 0.01
-LAMBDA = 0.01
-GAMMA = 0.5
+MIN_EPSILON = 0
+LAMBDA = 0.00005
+GAMMA = 1
+SEED = 7
 
 class Model:
     def __init__(self, num_states, num_actions, batch_size):
@@ -32,10 +33,10 @@ class Model:
         self._states = tf.placeholder(shape=[None, self.num_states], dtype=tf.float32)
         self._q_s_a = tf.placeholder(shape=[None, self.num_actions], dtype=tf.float32)
         # create a couple of fully connected hidden layers
-        fc1 = tf.layers.dense(self._states, 50, activation=tf.nn.relu)
-        fc2 = tf.layers.dense(fc1, 50, activation=tf.nn.relu)
+        fc1 = tf.layers.dense(self._states, 100)
+        fc2 = tf.layers.dense(fc1, 100)
         self._logits = tf.layers.dense(fc2, self.num_actions)
-        loss = tf.losses.mean_squared_error(self._q_s_a, self._logits)
+        loss = tf.losses.log_loss(self._q_s_a, self._logits)
         self._optimizer = tf.train.AdamOptimizer().minimize(loss)
         self.var_init = tf.global_variables_initializer()
 
@@ -66,13 +67,11 @@ class Memory:
             return random.sample(self._samples, no_samples)
 
 class GameRunner:
-    def __init__(self, sess, model, env, memory, max_eps, min_eps,
-                 decay, render=True):
+    def __init__(self, sess, model, env, memory, max_eps, min_eps, decay):
         self._sess = sess
         self._env = env
         self._model = model
         self._memory = memory
-        self._render = render
         self._max_eps = max_eps
         self._min_eps = min_eps
         self._decay = decay
@@ -81,14 +80,16 @@ class GameRunner:
         self.reward_store = []
         self._moves = game.get_all_pairs(self._env.rows, self._env.cols)
 
-    def run(self):
-        state = np.reshape(self._env.board, (1,-1))[0]
+    def run(self, render):
+        state = np.reshape(self._env.reset(), (1,-1))[0]
         tot_reward = 0
         while True:
-            if self._render:
-                self._env.print_board()
-
             action = self._choose_action(state)
+
+            if render:
+                self._env.print_board()
+                print(self._moves[action])
+                
             next_state, reward, done = self._env.advance_state(self._moves[action][0], self._moves[action][1])
             next_state = np.reshape(next_state, (1,-1))[0]
 
@@ -110,7 +111,6 @@ class GameRunner:
                 break
 
         print("Step {}, Total reward: {}, Eps: {}".format(self._steps, tot_reward, self._eps))
-        self._env.print_board()
 
     def _choose_action(self, state):
         if random.random() < self._eps:
@@ -146,7 +146,8 @@ class GameRunner:
         self._model.train_batch(self._sess, x, y)
     
 if __name__ == "__main__":
-    env = GameState(8, 8, 8, 0)
+    random.seed(SEED)
+    env = GameState(8, 8, 8, 10)
 
     num_states = env.cols * env.rows
     num_actions = env.cols * (env.rows - 1) + env.rows * (env.cols - 1)
@@ -156,16 +157,15 @@ if __name__ == "__main__":
 
     with tf.Session() as sess:
         sess.run(model.var_init)
-        gr = GameRunner(sess, model, env, mem, MAX_EPSILON, MIN_EPSILON,
-                        LAMBDA)
-        num_episodes = 300
+        gr = GameRunner(sess, model, env, mem, MAX_EPSILON, MIN_EPSILON, LAMBDA)
+        num_episodes = 10000
+        plot_interval = num_episodes
         cnt = 0
         while cnt < num_episodes:
-            if cnt % 10 == 0:
-                print('Episode {} of {}'.format(cnt+1, num_episodes))
-            gr.run()
+            gr.run(cnt >= num_episodes - 1)
             cnt += 1
-        plt.plot(gr.reward_store)
-        plt.show()
-        plt.close("all")
-        plt.show()
+            if cnt % plot_interval == 0:
+                plt.close("all")
+                plt.plot(gr.reward_store)
+                plt.xlim(num_episodes * -0.05, num_episodes * 1.05)
+                plt.show()

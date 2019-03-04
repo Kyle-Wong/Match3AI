@@ -3,12 +3,13 @@ import numpy as np
 import random
 import gym
 import math
+import matplotlib.pyplot as plt
 
-BATCH_SIZE = 5
-MAX_EPSILON = 0.9
-MIN_EPSILON = 0.01
-LAMBDA = 1
-GAMMA = 0.5
+BATCH_SIZE = 50
+MAX_EPSILON = 1.0
+MIN_EPSILON = 0.0
+LAMBDA = 0.0001
+GAMMA = 0.9
 
 class Model:
     def __init__(self, num_states, num_actions, batch_size):
@@ -75,7 +76,7 @@ class GameRunner:
         self._decay = decay
         self._eps = self._max_eps
         self._steps = 0
-        self._reward_store = []
+        self.reward_store = []
         self._max_x_store = []
 
     def run(self):
@@ -116,7 +117,7 @@ class GameRunner:
 
             # if the game is done, break the loop
             if done:
-                self._reward_store.append(tot_reward)
+                self.reward_store.append(tot_reward)
                 self._max_x_store.append(max_x)
                 break
 
@@ -168,7 +169,7 @@ if __name__ == "__main__":
     with tf.Session() as sess:
         sess.run(model.var_init)
         gr = GameRunner(sess, model, env, mem, MAX_EPSILON, MIN_EPSILON,
-                        LAMBDA)
+                        LAMBDA, render=False)
         num_episodes = 300
         cnt = 0
         while cnt < num_episodes:
