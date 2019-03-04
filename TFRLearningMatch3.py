@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import random
+import gym
 import math
 import matplotlib.pyplot as plt
 import game
@@ -78,13 +79,15 @@ class GameRunner:
         self._steps = 0
         self.reward_store = []
         self._moves = game.get_all_pairs(self._env.rows, self._env.cols)
+        self._action_queue = []
 
     def run(self, render):
         state = np.reshape(self._env.reset(), (1,-1))[0]
         tot_reward = 0
+        self._action_queue = []
         while True:
             action = self._choose_action(state)
-
+            self._action_queue.append(self._moves[action])
             if render:
                 self._env.print_board()
                 print(self._moves[action])

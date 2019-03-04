@@ -1,9 +1,13 @@
 from game import GameState
 from Gem import *
+from TFRLearningMatch3 import *
 import random
 import pygame
 import os.path
 from enum import Enum
+import tensorflow as tf
+import numpy as np
+import math
 class State(Enum):
     STANDBY = 1
     CLEARING = 2
@@ -38,9 +42,13 @@ def load_fonts(folder):
         print(f)
     return fonts
 GAMESEED = 111 #Static random number generator seed
+TRAINING_ROUNDS = 100 #Display GUI after X training rounds
+GAME_RUNNING = False
 class Match3:
 
-    def __init__(self,rows,cols,gem_type_count,turn_limit,sprites,rand_state = random.getstate()):
+    def __init__(self,rows,cols,gem_type_count,turn_limit,sprites,gr,rand_state = random.getstate()):
+        GAME_RUNNING = True
+        self.gr = gr
         self.sprites = sprites
         self.gs = GameState(rows,cols,gem_type_count,turn_limit,rand_state) #GameState
         self.p_width = 930 #Pixel width
@@ -62,10 +70,16 @@ class Match3:
         self.improvement = 0 #self.gems_matched - prev_matches
         self.action_queue = [] #list of pairs ( (p1.x,p1.y), (p2.x,p2.y) ) to be
                                 #run sequentially as swaps in the game
+        self.gs.rand_state = self.gr._env.rand_state
+        gr.run(False)
+        self.action_queue = gr._action_queue
+        
     def run(self):
         '''
         Begin main loop, call update and draw each frame
         '''
+        
+        
         while self.running:
             self.delta_time = self.clock.get_time()/1000
             self.update()
@@ -93,13 +107,16 @@ class Match3:
         elif self.state is State.CLEARING:
             if not self._gems_blocking():
                 match_set = self.gs.get_matches()
+                if len
                 for p1 in match_set:
                     self.gems[p1].clear()
                 self.state = State.SETTLING
         elif self.state is State.SETTLING:
             if not self._gems_blocking():
                 self.settle_step()
-       
+                
+        if self.gs.turn_num >= self.gs.turn_limit:
+            self.__init__(8,8,7,10,sprites,self.gr,self.gs.rand_state)
         
     def draw(self):
         '''
@@ -301,18 +318,40 @@ class Match3:
             for j in range(0,self.gs.cols):
                 self.gs.board[i,j] = self.gems[i,j].gem_type
 
-    
+
+
 if __name__ == "__main__":
-    pygame.init()
-    fonts = load_fonts("Fonts")
-    title_font = pygame.font.Font(fonts['OldSansBlack'],30)
-    sprites = load_sprites("Sprites")
+
+    
     random.seed(GAMESEED) #Set static seed
     state = random.getstate()
-    game = Match3(8,8,7,10,sprites,state)
-    game.action_queue = [((6,3),(6,4))]
-    game.action_queue.append(((5,1),(5,2)))
-    game.run()
+    env = GameState(8, 8, 8, 10)
+
+    num_states = env.cols * env.rows
+    num_actions = env.cols * (env.rows - 1) + env.rows * (env.cols - 1)
+
+    model = Model(num_states, num_actions, BATCH_SIZE)
+    mem = Memory(50000)
+    with tf.Session() as sess:
+        sess.run(model.var_init)
+        gr = GameRunner(sess, model, env, mem, MAX_EPSILON, MIN_EPSILON, LAMBDA)
+        num_episodes = 50 #10000
+        plot_interval = num_episodes
+        cnt = 0
+        while cnt < num_episodes:
+            gr.run(cnt >= num_episodes - 1)
+            cnt += 1
+
+
+        state = gr._env.rand_state
+        pygame.init()
+        fonts = load_fonts("Fonts")
+        title_font = pygame.font.Font(fonts['OldSansBlack'],30)
+        sprites = load_sprites("Sprites")
+        game = Match3(8,8,7,10,sprites,gr,state)
+        game.run()
+        
+            
     pygame.quit()
     quit()
 
