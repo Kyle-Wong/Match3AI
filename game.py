@@ -33,18 +33,18 @@ class GameState:
             
     def advance_state(self,p1,p2):
         self._swap(p1,p2)
-        reward = self._process_matches()
+        remove_sets = self.get_matches()
+        reward = 0
+        if len(remove_set) == 0:
+            self._swap(p1,p2)
+            reward = 0
+        else:
+            reward = self._process_matches() + self._evaluate_board()
         self.turn_num += 1
 
         next_state = self.board
         done = self.turn_num >= self.turn_limit
         return self.board, reward, done
-
-    def reset(self):
-        self.randomize_board()
-        self.turn_num = 0
-        self.rand_state = random.getstate()
-        return self.board
 
     def _swap(self,p1,p2):
         if not self.valid(p1,p2):
