@@ -46,6 +46,12 @@ class GameState:
         done = self.turn_num >= self.turn_limit
         return self.board, reward, done
 
+    def reset(self):
+        self.randomize_board()
+        self.turn_num = 0
+        self.rand_state = random.getstate()
+        return self.board
+
     def _swap(self,p1,p2):
         if not self.valid(p1,p2):
             raise InputError(self.board,p1,p2)
