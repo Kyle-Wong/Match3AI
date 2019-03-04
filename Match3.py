@@ -100,14 +100,17 @@ class Match3:
                 self.running = False
         self._update_objects()
         if self.state is State.STANDBY:
-            if len(self.action_queue) > 0:
+            if not self._gems_blocking() and len(self.action_queue) > 0:
                 p1,p2 = self.action_queue[0]
                 self.advance_state(p1,p2)
                 self.action_queue.pop(0)
         elif self.state is State.CLEARING:
             if not self._gems_blocking():
                 match_set = self.gs.get_matches()
-                if len
+                if len(match_set) == 0:
+                    self._swap_gems(self.prev_move[0],self.prev_move[1])
+                    self.state = State.STANDBY
+                    return
                 for p1 in match_set:
                     self.gems[p1].clear()
                 self.state = State.SETTLING
