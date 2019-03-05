@@ -10,7 +10,7 @@ from game import GameState
 BATCH_SIZE = 100
 MAX_EPSILON = 1
 MIN_EPSILON = 0
-LAMBDA = 0.00005
+LAMBDA = 0.0005
 GAMMA = 1
 SEED = 7
 
@@ -86,12 +86,15 @@ class GameRunner:
         tot_reward = 0
         self._action_queue = []
         while True:
+            if not self._env.moves_left():
+                break
+            
             action = self._choose_action(state)
             self._action_queue.append(self._moves[action])
             if render:
                 self._env.print_board()
                 print(self._moves[action])
-                
+                    
             next_state, reward, done = self._env.advance_state(self._moves[action][0], self._moves[action][1])
             next_state = np.reshape(next_state, (1,-1))[0]
 
@@ -115,10 +118,16 @@ class GameRunner:
         print("Step {}, Total reward: {}, Eps: {}".format(self._steps, tot_reward, self._eps))
 
     def _choose_action(self, state):
+        action_list = self._env.get_valid_moves()
         if random.random() < self._eps:
-            return random.randint(0, self._model.num_actions - 1)
+            action_list = self._env.get_valid_moves()
+            return action_list[random.randint(0, len(action_list) - 1)]
         else:
-            return np.argmax(self._model.predict_one(state, self._sess))
+            sorted_actions = np.argsort(self._model.predict_one(state, self._sess))
+            for i in range(len(sorted_actions) - 1, -1, -1):
+                if i in action_list:
+                    return i
+            return action_list[random.randint(0, len(action_list) - 1)]
 
     def _replay(self):
         batch = self._memory.sample(self._model.batch_size)
@@ -146,6 +155,16 @@ class GameRunner:
             x[i] = state
             y[i] = current_q
         self._model.train_batch(self._sess, x, y)
+
+def average_splice(a, n):
+    '''
+    Return the average values of n splices over collection a
+    '''
+    result = []
+    splice = len(a) / 10
+    for i in range(n):
+        result.append(np.average(a[int(splice*i):int(splice*(i+1))]))
+    return result
     
 if __name__ == "__main__":
     random.seed(SEED)
@@ -160,7 +179,7 @@ if __name__ == "__main__":
     with tf.Session() as sess:
         sess.run(model.var_init)
         gr = GameRunner(sess, model, env, mem, MAX_EPSILON, MIN_EPSILON, LAMBDA)
-        num_episodes = 10000
+        num_episodes = 1000
         plot_interval = num_episodes
         cnt = 0
         while cnt < num_episodes:
@@ -168,6 +187,6 @@ if __name__ == "__main__":
             cnt += 1
             if cnt % plot_interval == 0:
                 plt.close("all")
-                plt.plot(gr.reward_store)
-                plt.xlim(num_episodes * -0.05, num_episodes * 1.05)
+                plt.plot(average_splice(gr.reward_store, 10))
+                plt.xlim(-1, 11)
                 plt.show()

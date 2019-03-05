@@ -34,17 +34,29 @@ class GameState:
     def advance_state(self,p1,p2):
         self._swap(p1,p2)
         remove_set = self.get_matches()
-        reward = 0
         if len(remove_set) == 0:
             self._swap(p1,p2)
-            reward = -10
+            return self.board, -10, False
         else:
-            reward = self._process_matches() + self._evaluate_board()
-        self.turn_num += 1
+            reward = self._process_matches() - 3
 
-        next_state = self.board
-        done = self.turn_num >= self.turn_limit
+        self.turn_num += 1
+        done = self.turn_num >= self.turn_limit or not self.moves_left()
         return self.board, reward, done
+
+    def move_is_valid(self, p1, p2):
+        self._swap(p1,p2)
+        remove_set = self.get_matches()
+        self._swap(p1, p2)
+        return len(remove_set) > 0
+
+    def get_valid_moves(self):
+        result = []
+        moves = get_all_pairs(self.rows, self.cols)
+        for i in range(len(moves)):
+            if self.move_is_valid(moves[i][0], moves[i][1]):
+                result.append(i)
+        return result
 
     def _swap(self,p1,p2):
         if not self.valid(p1,p2):
@@ -55,6 +67,13 @@ class GameState:
 
     def print_board(self):
         print(self.board)
+
+    def moves_left(self):
+        moves = get_all_pairs(self.rows, self.cols)
+        for i in range(len(moves)):
+            if self.move_is_valid(moves[i][0], moves[i][1]):
+                return True
+        return False
         
     def _process_matches(self):
         first_iteration= True
@@ -177,7 +196,6 @@ class GameState:
     def reset(self):
         self.randomize_board()
         self.turn_num = 0
-        self.rand_state = random.getstate()
         return self.board
     
     def randomize_board(self):
