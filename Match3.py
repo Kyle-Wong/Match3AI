@@ -50,9 +50,16 @@ class Match3:
         GAME_RUNNING = True
         self.gr = gr
         self.sprites = sprites
-        self.gs = GameState(rows,cols,gem_type_count,turn_limit,rand_state) #GameState
         self.p_width = 930 #Pixel width
         self.p_height = 600 #Pixel height
+
+        self.gs = GameState(rows,cols,gem_type_count,turn_limit,self.gr._env.rand_state) #GameState
+        gr.run(False)
+        
+        self.action_queue = gr._action_queue
+                                #list of pairs ( (p1.x,p1.y), (p2.x,p2.y) ) to be
+                                #run sequentially as swaps in the game
+        print("queue" + str(self.action_queue))
         self.display = pygame.display.set_mode((self.p_width,self.p_height))
         self.board_rect = pygame.Rect(215,0,500,500) #Game board bounding box
         self.tile_w = self.board_rect.w/self.gs.cols #Width of a board tile
@@ -68,11 +75,8 @@ class Match3:
         self.prev_move = None #( (p1.x,p1.y), (p2.x,p2.y) ) which is the last action taken
         self.prev_matches = 0 #Gems matched prior to current action
         self.improvement = 0 #self.gems_matched - prev_matches
-        self.action_queue = [] #list of pairs ( (p1.x,p1.y), (p2.x,p2.y) ) to be
-                                #run sequentially as swaps in the game
-        self.gs.rand_state = self.gr._env.rand_state
-        gr.run(False)
-        self.action_queue = gr._action_queue
+        self._swap_back = False
+        
         
     def run(self):
         '''
@@ -99,6 +103,8 @@ class Match3:
             if event.type == pygame.QUIT:
                 self.running = False
         self._update_objects()
+        if self.gs.turn_num >= self.gs.turn_limit or not self.gs.moves_left():
+            self.__init__(8,8,7,10,sprites,self.gr,self.gs.rand_state)
         if self.state is State.STANDBY:
             if not self._gems_blocking() and len(self.action_queue) > 0:
                 p1,p2 = self.action_queue[0]
@@ -107,10 +113,12 @@ class Match3:
         elif self.state is State.CLEARING:
             if not self._gems_blocking():
                 match_set = self.gs.get_matches()
-                if len(match_set) == 0:
+                if self._swap_back:
                     self._swap_gems(self.prev_move[0],self.prev_move[1])
+                    self.gs._swap(self.prev_move[0],self.prev_move[1])
                     self.state = State.STANDBY
-                    return
+                    self._swap_back = False
+                    returns
                 for p1 in match_set:
                     self.gems[p1].clear()
                 self.state = State.SETTLING
@@ -118,8 +126,7 @@ class Match3:
             if not self._gems_blocking():
                 self.settle_step()
                 
-        if self.gs.turn_num >= self.gs.turn_limit:
-            self.__init__(8,8,7,10,sprites,self.gr,self.gs.rand_state)
+        
         
     def draw(self):
         '''
@@ -146,6 +153,9 @@ class Match3:
         self.gs._swap(p1,p2)
         self._swap_gems(p1,p2)
         self.prev_move = (p1,p2)
+        if len(self.gs.get_matches()) == 0:
+            self._swap_back = True
+
         self.gs.turn_num += 1
 
     def settle_step(self):
@@ -328,7 +338,7 @@ if __name__ == "__main__":
     
     random.seed(GAMESEED) #Set static seed
     state = random.getstate()
-    env = GameState(8, 8, 8, 10)
+    env = GameState(8, 8, 7, 10,state)
 
     num_states = env.cols * env.rows
     num_actions = env.cols * (env.rows - 1) + env.rows * (env.cols - 1)
@@ -338,7 +348,7 @@ if __name__ == "__main__":
     with tf.Session() as sess:
         sess.run(model.var_init)
         gr = GameRunner(sess, model, env, mem, MAX_EPSILON, MIN_EPSILON, LAMBDA)
-        num_episodes = 50 #10000
+        num_episodes = 1 #10000
         plot_interval = num_episodes
         cnt = 0
         while cnt < num_episodes:
@@ -346,11 +356,11 @@ if __name__ == "__main__":
             cnt += 1
 
 
-        state = gr._env.rand_state
         pygame.init()
         fonts = load_fonts("Fonts")
         title_font = pygame.font.Font(fonts['OldSansBlack'],30)
         sprites = load_sprites("Sprites")
+        state = gr._env.rand_state
         game = Match3(8,8,7,10,sprites,gr,state)
         game.run()
         
