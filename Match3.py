@@ -118,7 +118,6 @@ class Match3:
                     self.gs._swap(self.prev_move[0],self.prev_move[1])
                     self.state = State.STANDBY
                     self._swap_back = False
-                    returns
                 for p1 in match_set:
                     self.gems[p1].clear()
                 self.state = State.SETTLING
