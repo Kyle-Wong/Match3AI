@@ -29,7 +29,8 @@ class GameState:
         self.turn_limit = turn_limit
             #number of turns before determined to be "done"
         self.board = np.zeros((rows,cols),dtype=int)
-        self.randomize_board()     
+        self.gem_count = np.arange(0,gem_type_count,dtype=int)
+        self.randomize_board()
             
     def advance_state(self,p1,p2):
         self._swap(p1,p2)
@@ -96,6 +97,7 @@ class GameState:
         return remove_set
     def remove_null_gems(self,remove_set):
         for i,j in remove_set:
+            self.gem_count[self.board[i,j]] -= 1
             self.board[i,j] = NULL_GEM
         self._settle_board()
     def _get_vertical_matches(self,remove_set):
@@ -194,6 +196,7 @@ class GameState:
         return result
 
     def reset(self):
+        self.gem_count = np.arange(0,gem_type_count-1,dtype=int)
         self.randomize_board()
         self.turn_num = 0
         return self.board
@@ -212,10 +215,24 @@ class GameState:
         '''
         random.setstate(self.rand_state)
         result = random.randint(0,self.gem_type_count-1)
+        self.gem_count[result] += 1
         self.rand_state = random.getstate()
         return result
+    def freq_board(self):
+        freq_board = np.zeros((self.rows,self.cols),dtype=int)
 
+        gems = list(enumerate(self.gem_count))
+        gems.sort(reverse = True, key = lambda x: x[1])
+        print(gems)
+        gem_map = {}
+        for i in range(0, len(gems)):
+            gem_map[gems[i][0]] = i
+        for i in range(0,self.rows):
+            for j in range(0,self.cols):
+                freq_board[i,j] = gem_map[self.board[i,j]]
+        return freq_board
 
+    
 def get_all_pairs(rows,cols):
     result_set = set()
     for i in range(0,rows):
@@ -251,11 +268,11 @@ if __name__ == "__main__":
     
     random.seed(SEED)
     state = random.getstate()
-    g = GameState(8,8,7,state)
+    g = GameState(8,8,7,10,state)
     #f = GameState(6,6,4,state)
-    
     text = ""
     while(text != 'quit'):
+        print(g.freq_board())   
         print("\nTurn #"+str(g.turn_num))
 
         g.print_board()
