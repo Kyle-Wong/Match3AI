@@ -165,7 +165,7 @@ def average_splice(a, n):
     for i in range(n):
         result.append(np.average(a[int(splice*i):int(splice*(i+1))]))
     return result
-    
+        
 if __name__ == "__main__":
     random.seed(SEED)
     env = GameState(8, 8, 8, 10)
@@ -176,7 +176,10 @@ if __name__ == "__main__":
     model = Model(num_states, num_actions, BATCH_SIZE)
     mem = Memory(50000)
 
+    save_state_file = "AIStates/AIState"
+    saver = tf.train.Saver()
     with tf.Session() as sess:
+        saver.restore(sess, save_state_file)
         sess.run(model.var_init)
         gr = GameRunner(sess, model, env, mem, MAX_EPSILON, MIN_EPSILON, LAMBDA)
         num_episodes = 1000
@@ -186,7 +189,9 @@ if __name__ == "__main__":
             gr.run(cnt >= num_episodes - 1)
             cnt += 1
             if cnt % plot_interval == 0:
+                saver.save(sess, save_state_file)
                 plt.close("all")
                 plt.plot(average_splice(gr.reward_store, 10))
                 plt.xlim(-1, 11)
                 plt.show()
+
