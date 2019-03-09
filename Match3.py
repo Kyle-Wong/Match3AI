@@ -41,6 +41,22 @@ def load_fonts(folder):
     for f in fonts:
         print(f)
     return fonts
+def load_sounds(folder):
+    '''
+    Loads all fonts in the Match3AI/Fonts folder into the Fonts dictionary.
+    Key is file name (without extensions) and Value is the pygame sound object
+    '''
+    current_path = os.path.dirname(os.path.realpath(__file__))
+    sound_path = os.path.join(current_path,folder)
+    sounds = {}
+    for file in os.listdir(sound_path):
+        print(file.split('.')[0])
+        sounds[file.split('.')[0]] = pygame.mixer.Sound(os.path.join(sound_path,file))
+    print("---------SOUNDS-----------")
+    for s in sounds:
+        print(s)
+    return sounds
+
 GAMESEED = 111 #Static random number generator seed
 TRAINING_ROUNDS = 100 #Display GUI after X training rounds
 GAME_RUNNING = False
@@ -109,6 +125,7 @@ class Match3:
                 p1,p2 = self.action_queue[0]
                 self.advance_state(p1,p2)
                 self.action_queue.pop(0)
+                
         elif self.state is State.CLEARING:
             if not self._gems_blocking():
                 match_set = self.gs.get_matches()
@@ -120,10 +137,15 @@ class Match3:
                     return
                 for p1 in match_set:
                     self.gems[p1].clear()
+                if len(match_set) > 0:
+                    sounds["gem_clear"].play()
+
                 self.state = State.SETTLING
         elif self.state is State.SETTLING:
             if not self._gems_blocking():
                 self.settle_step()
+                
+            
                 
         
         
@@ -321,7 +343,7 @@ class Match3:
         self._draw_text_outline(text,x,y+40,text_dim[0],text_dim[1],1.25,font,pygame.Color(255,255,255))
         self.surface.blit(surface,pygame.Rect(x,y+40,text_dim[0],text_dim[1]))
     def _draw_credits(self,x,y,font):
-        text = "Gems by limbusdev"
+        text = "Gems by limbusdev, Sounds by ViRiX Dreamcore (soundcloud.com/virix)"
         surface = font.render(text,True,pygame.Color(0,0,0))
         text_dim = font.size(text)
         self.surface.blit(surface,pygame.Rect(x,y,text_dim[0],text_dim[1]))
@@ -388,6 +410,7 @@ if __name__ == "__main__":
         title_font = pygame.font.Font(fonts['OldSansBlack'],30)
         normal_font = pygame.font.Font(fonts['OldSansBlack'],15)
         sprites = load_sprites("Sprites")
+        sounds = load_sounds("Sounds")
         state = gr._env.rand_state
         game = Match3(8,8,7,10,sprites,gr,state)
         game.run()
