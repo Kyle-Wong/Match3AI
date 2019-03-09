@@ -59,7 +59,6 @@ class Match3:
         self.action_queue = gr._action_queue
                                 #list of pairs ( (p1.x,p1.y), (p2.x,p2.y) ) to be
                                 #run sequentially as swaps in the game
-        print("queue" + str(self.action_queue))
         self.display = pygame.display.set_mode((self.p_width,self.p_height))
         self.board_rect = pygame.Rect(215,0,500,500) #Game board bounding box
         self.tile_w = self.board_rect.w/self.gs.cols #Width of a board tile
@@ -118,7 +117,7 @@ class Match3:
                     self.gs._swap(self.prev_move[0],self.prev_move[1])
                     self.state = State.STANDBY
                     self._swap_back = False
-                    returns
+                    return
                 for p1 in match_set:
                     self.gems[p1].clear()
                 self.state = State.SETTLING
@@ -139,6 +138,7 @@ class Match3:
         self._draw_prev_move()
         self._draw_turns_left(30,30,title_font)
         self._draw_score(self.p_width-150,30,title_font)
+        self._draw_credits(10,self.p_height-20,normal_font)
         self.display.blit(self.surface,(0,0))
 
     def advance_state(self,p1,p2):
@@ -299,24 +299,51 @@ class Match3:
         text = "Moves Left:"
         surface = title_font.render(text,True,pygame.Color(0,0,0))
         text_dim = title_font.size(text)
+        self._draw_text_outline(text,x,y,text_dim[0],text_dim[1],1.25,font,pygame.Color(255,255,255))
         self.surface.blit(surface,pygame.Rect(x,y,text_dim[0],text_dim[1]))
 
         text = str(self.gs.turn_limit-self.gs.turn_num)
         surface = title_font.render(text,True,pygame.Color(0,0,0))
         text_dim = title_font.size(text)
+        self._draw_text_outline(text,x,y+40,text_dim[0],text_dim[1],1.25,font,pygame.Color(255,255,255))
         self.surface.blit(surface,pygame.Rect(x,y+40,text_dim[0],text_dim[1]))        
 
     def _draw_score(self,x,y,font):
         text = "Score:"
         surface = font.render(text,True,pygame.Color(0,0,0))
         text_dim = font.size(text)
+        self._draw_text_outline(text,x,y,text_dim[0],text_dim[1],1.25,font,pygame.Color(255,255,255))
         self.surface.blit(surface,pygame.Rect(x,y,text_dim[0],text_dim[1]))
 
-        text = str(self.gs.gems_matched)
+        text = str(self.gs.gems_matched*100)
         surface = font.render(text,True,pygame.Color(0,0,0))
         text_dim = font.size(text)
+        self._draw_text_outline(text,x,y+40,text_dim[0],text_dim[1],1.25,font,pygame.Color(255,255,255))
         self.surface.blit(surface,pygame.Rect(x,y+40,text_dim[0],text_dim[1]))
-    
+    def _draw_credits(self,x,y,font):
+        text = "Gems by limbusdev"
+        surface = font.render(text,True,pygame.Color(0,0,0))
+        text_dim = font.size(text)
+        self.surface.blit(surface,pygame.Rect(x,y,text_dim[0],text_dim[1]))
+
+    def _draw_text_outline(self,text,x,y,width,height,weight,font,color):
+        '''
+        Basic white outline by drawing the text 8 times with small radial offset
+        '''
+        offsets = [
+            (1,0),
+            (.707,.707),
+            (0,1),
+            (-.707,.707),
+            (-1,0),
+            (-.707,-.707),
+            (0,-1),
+            (.707,-.707)
+        ] #Unit circle values
+        text_surface = font.render(text,True,color)
+        for xOffset,yOffset in offsets:
+            self.surface.blit(text_surface,pygame.Rect(x+xOffset*weight,y+yOffset*weight,width,height))
+
     def _initialize_board(self):
         '''
         Spawn gem objects with correct sprite type
@@ -324,7 +351,7 @@ class Match3:
         self.gems = np.empty((self.gs.rows,self.gs.cols),dtype=Gem)
         for i in range(0,self.gs.rows):
             for j in range(0,self.gs.cols):
-                self.gems[i,j] = Gem(i,j,self.gs.board[i,j],200,self)
+                self.gems[i,j] = Gem(i,j,self.gs.board[i,j],300,self)
                 self.objects.append(self.gems[i,j])
     def copy_board_to_gs(self):
         for i in range(0,self.gs.rows):
@@ -359,6 +386,7 @@ if __name__ == "__main__":
         pygame.init()
         fonts = load_fonts("Fonts")
         title_font = pygame.font.Font(fonts['OldSansBlack'],30)
+        normal_font = pygame.font.Font(fonts['OldSansBlack'],15)
         sprites = load_sprites("Sprites")
         state = gr._env.rand_state
         game = Match3(8,8,7,10,sprites,gr,state)

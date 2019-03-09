@@ -196,7 +196,7 @@ class GameState:
         return result
 
     def reset(self):
-        self.gem_count = np.arange(0,gem_type_count-1,dtype=int)
+        self.gem_count = np.arange(0,self.gem_type_count,dtype=int)
         self.randomize_board()
         self.turn_num = 0
         return self.board
