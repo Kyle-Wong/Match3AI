@@ -31,6 +31,7 @@ class GameState:
         self.board = np.zeros((rows,cols),dtype=int)
         self.gem_count = np.arange(0,gem_type_count,dtype=int)
         self.randomize_board()
+        self.no_moves_left = False
             
     def advance_state(self,p1,p2):
         self._swap(p1,p2)
@@ -40,9 +41,9 @@ class GameState:
             return self.board, -10, False
         else:
             reward = self._process_matches() - 3
-
+        self._calculate_if_moves_left()
         self.turn_num += 1
-        done = self.turn_num >= self.turn_limit or not self.moves_left()
+        done = self.turn_num >= self.turn_limit or self.no_moves_left
         return self.board, reward, done
 
     def move_is_valid(self, p1, p2):
@@ -69,17 +70,22 @@ class GameState:
     def print_board(self):
         print(self.board)
 
-    def moves_left(self):
+    def _calculate_if_moves_left(self):
         moves = get_all_pairs(self.rows, self.cols)
         for i in range(len(moves)):
             if self.move_is_valid(moves[i][0], moves[i][1]):
+                self.no_moves_left = False
                 return True
+        self.no_moves_left = True
         return False
-        
+
+    def moves_left(self):
+        return not self.no_moves_left
+
     def _process_matches(self):
-        first_iteration= True
-        remove_set = set()
+        first_iteration = True
         prev_matches = self.gems_matched
+        remove_set = set()
         while(first_iteration or len(remove_set) > 0):
             remove_set = self.get_matches()
             if len(remove_set) > 0:
@@ -197,6 +203,7 @@ class GameState:
 
     def reset(self):
         self.gem_count = np.arange(0,self.gem_type_count,dtype=int)
+        self.no_moves_left = False
         self.randomize_board()
         self.turn_num = 0
         return self.board

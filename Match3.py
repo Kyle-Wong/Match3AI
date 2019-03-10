@@ -118,7 +118,7 @@ class Match3:
             if event.type == pygame.QUIT:
                 self.running = False
         self._update_objects()
-        if self.gs.turn_num >= self.gs.turn_limit or not self.gs.moves_left():
+        if self.gs.turn_num >= self.gs.turn_limit or not self.gs._calculate_if_moves_left():
             self.__init__(8,8,7,10,sprites,self.gr,self.gs.rand_state)
         if self.state is State.STANDBY:
             if not self._gems_blocking() and len(self.action_queue) > 0:
@@ -144,7 +144,7 @@ class Match3:
         elif self.state is State.SETTLING:
             if not self._gems_blocking():
                 self.settle_step()
-                
+               
             
                 
         
@@ -397,7 +397,7 @@ if __name__ == "__main__":
     with tf.Session() as sess:
         sess.run(model.var_init)
         gr = GameRunner(sess, model, env, mem, MAX_EPSILON, MIN_EPSILON, LAMBDA)
-        num_episodes = 1 #10000
+        num_episodes = 100 #10000
         plot_interval = num_episodes
         cnt = 0
         while cnt < num_episodes:
