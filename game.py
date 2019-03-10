@@ -176,7 +176,17 @@ class GameState:
         #Remember p is (row,col),not (x,y)
         if(p[0] <= 0):
             #top row
-            return self.generate_gem()
+            #find lowest null gem
+            pb = p
+            while self.board[pb[0]+1,pb[1]] == NULL_GEM:
+                pb = (pb[0]+1, pb[1])
+            #exclude neighbors to prevent a chance match
+            exclude = [self.board[pb[0]+1,pb[1]]]
+            if pb[1] > 0:
+                exclude.append(self.board[pb[0],pb[1]-1])
+            if pb[1] < self.cols - 1:
+                exclude.append(self.board[pb[0],pb[1]+1])
+            return self.generate_gem(exclude)
         elif(self.board[p[0]-1,p[1]] == NULL_GEM):
             #gem above is NULL_GEM,
             return self._copy_above((p[0]-1,p[1]))
@@ -215,13 +225,15 @@ class GameState:
         self._process_matches()
         self.gems_matched = 0
         self.score = 0
-        
-    def generate_gem(self):
+
+    def generate_gem(self, exclude=[]):
         '''
         Generate random gem using the random state of this GameState object
         '''
         random.setstate(self.rand_state)
         result = random.randint(0,self.gem_type_count-1)
+        while result in exclude:
+            result = random.randint(0,self.gem_type_count-1)
         self.gem_count[result] += 1
         self.rand_state = random.getstate()
         return result
