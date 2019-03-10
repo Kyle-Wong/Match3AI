@@ -220,19 +220,31 @@ class GameState:
         return result
     def freq_board(self):
         freq_board = np.zeros((self.rows,self.cols),dtype=int)
-
-        gems = list(enumerate(self.gem_count))
-        gems.sort(reverse = True, key = lambda x: x[1])
+        gems = []
+        for i in range(0,self.gem_type_count):
+            #Tuple (frequency, distance from origin (top left), gem type)
+            gems.append((self.gem_count[i],self._distance_from_origin(i),i))
+        #Sort by frequency first, then distance-from-origin 
+        #(doesn't matter if same-frequency gems are ordered from furthest-from-origin or closest-to-origin)
+        gems.sort(reverse = True)
         print(gems)
         gem_map = {}
         for i in range(0, len(gems)):
-            gem_map[gems[i][0]] = i
+            #from most frequent to least frequent, assign 0 to gem_type_count
+            gem_map[gems[i][2]] = i
         for i in range(0,self.rows):
             for j in range(0,self.cols):
                 freq_board[i,j] = gem_map[self.board[i,j]]
         return freq_board
 
-    
+    def _distance_from_origin(self,gem_type):
+        for i in range(0,self.rows):
+            for j in range(0,self.cols):
+                if self.board[i,j] == gem_type:
+                    return i*self.cols+j
+        return self.rows*self.cols
+
+
 def get_all_pairs(rows,cols):
     result_set = set()
     for i in range(0,rows):
@@ -269,10 +281,8 @@ if __name__ == "__main__":
     random.seed(SEED)
     state = random.getstate()
     g = GameState(8,8,7,10,state)
-    #f = GameState(6,6,4,state)
     text = ""
     while(text != 'quit'):
-        print(g.freq_board())   
         print("\nTurn #"+str(g.turn_num))
 
         g.print_board()
