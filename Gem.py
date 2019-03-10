@@ -1,6 +1,6 @@
 import numpy as np
-from Match3 import *
 import math
+import pygame
 def lerp(start,end,perc):
     return start + (end-start)*perc
 class Gem:
@@ -15,7 +15,7 @@ class Gem:
         self.move_speed = move_speed
         self.moving = False
         self.clear_anim = False
-        self.rot_speed = 500
+        self.rot_speed = 900
         self.angle = 0
         self.anim_duration = .25
         self.timer = 0

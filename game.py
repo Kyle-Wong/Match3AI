@@ -29,7 +29,9 @@ class GameState:
         self.turn_limit = turn_limit
             #number of turns before determined to be "done"
         self.board = np.zeros((rows,cols),dtype=int)
-        self.randomize_board()     
+        self.gem_count = np.arange(0,gem_type_count,dtype=int)
+        self.randomize_board()
+        self.no_moves_left = False
             
     def advance_state(self,p1,p2):
         self._swap(p1,p2)
@@ -39,9 +41,9 @@ class GameState:
             return self.board, -10, False
         else:
             reward = self._process_matches() - 3
-
+        self._calculate_if_moves_left()
         self.turn_num += 1
-        done = self.turn_num >= self.turn_limit or not self.moves_left()
+        done = self.turn_num >= self.turn_limit or self.no_moves_left
         return self.board, reward, done
 
     def move_is_valid(self, p1, p2):
@@ -68,17 +70,22 @@ class GameState:
     def print_board(self):
         print(self.board)
 
-    def moves_left(self):
+    def _calculate_if_moves_left(self):
         moves = get_all_pairs(self.rows, self.cols)
         for i in range(len(moves)):
             if self.move_is_valid(moves[i][0], moves[i][1]):
+                self.no_moves_left = False
                 return True
+        self.no_moves_left = True
         return False
-        
+
+    def moves_left(self):
+        return not self.no_moves_left
+
     def _process_matches(self):
-        first_iteration= True
-        remove_set = set()
+        first_iteration = True
         prev_matches = self.gems_matched
+        remove_set = set()
         while(first_iteration or len(remove_set) > 0):
             remove_set = self.get_matches()
             if len(remove_set) > 0:
@@ -96,6 +103,7 @@ class GameState:
         return remove_set
     def remove_null_gems(self,remove_set):
         for i,j in remove_set:
+            self.gem_count[self.board[i,j]] -= 1
             self.board[i,j] = NULL_GEM
         self._settle_board()
     def _get_vertical_matches(self,remove_set):
@@ -204,6 +212,8 @@ class GameState:
         return result
 
     def reset(self):
+        self.gem_count = np.arange(0,self.gem_type_count,dtype=int)
+        self.no_moves_left = False
         self.randomize_board()
         self.turn_num = 0
         return self.board
@@ -224,8 +234,35 @@ class GameState:
         result = random.randint(0,self.gem_type_count-1)
         while result in exclude:
             result = random.randint(0,self.gem_type_count-1)
+        self.gem_count[result] += 1
+
         self.rand_state = random.getstate()
         return result
+    def freq_board(self):
+        freq_board = np.zeros((self.rows,self.cols),dtype=int)
+        gems = []
+        for i in range(0,self.gem_type_count):
+            #Tuple (frequency, distance from origin (top left), gem type)
+            gems.append((self.gem_count[i],self._distance_from_origin(i),i))
+        #Sort by frequency first, then distance-from-origin 
+        #(doesn't matter if same-frequency gems are ordered from furthest-from-origin or closest-to-origin)
+        gems.sort(reverse = True)
+        print(gems)
+        gem_map = {}
+        for i in range(0, len(gems)):
+            #from most frequent to least frequent, assign 0 to gem_type_count
+            gem_map[gems[i][2]] = i
+        for i in range(0,self.rows):
+            for j in range(0,self.cols):
+                freq_board[i,j] = gem_map[self.board[i,j]]
+        return freq_board
+
+    def _distance_from_origin(self,gem_type):
+        for i in range(0,self.rows):
+            for j in range(0,self.cols):
+                if self.board[i,j] == gem_type:
+                    return i*self.cols+j
+        return self.rows*self.cols
 
 
 def get_all_pairs(rows,cols):
@@ -263,9 +300,7 @@ if __name__ == "__main__":
     
     random.seed(SEED)
     state = random.getstate()
-    g = GameState(8,8,7,state)
-    #f = GameState(6,6,4,state)
-    
+    g = GameState(8,8,7,10,state)
     text = ""
     while(text != 'quit'):
         print("\nTurn #"+str(g.turn_num))

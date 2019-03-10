@@ -41,6 +41,22 @@ def load_fonts(folder):
     for f in fonts:
         print(f)
     return fonts
+def load_sounds(folder):
+    '''
+    Loads all fonts in the Match3AI/Fonts folder into the Fonts dictionary.
+    Key is file name (without extensions) and Value is the pygame sound object
+    '''
+    current_path = os.path.dirname(os.path.realpath(__file__))
+    sound_path = os.path.join(current_path,folder)
+    sounds = {}
+    for file in os.listdir(sound_path):
+        print(file.split('.')[0])
+        sounds[file.split('.')[0]] = pygame.mixer.Sound(os.path.join(sound_path,file))
+    print("---------SOUNDS-----------")
+    for s in sounds:
+        print(s)
+    return sounds
+
 GAMESEED = 111 #Static random number generator seed
 TRAINING_ROUNDS = 100 #Display GUI after X training rounds
 GAME_RUNNING = False
@@ -59,7 +75,6 @@ class Match3:
         self.action_queue = gr._action_queue
                                 #list of pairs ( (p1.x,p1.y), (p2.x,p2.y) ) to be
                                 #run sequentially as swaps in the game
-        print("queue" + str(self.action_queue))
         self.display = pygame.display.set_mode((self.p_width,self.p_height))
         self.board_rect = pygame.Rect(215,0,500,500) #Game board bounding box
         self.tile_w = self.board_rect.w/self.gs.cols #Width of a board tile
@@ -103,13 +118,14 @@ class Match3:
             if event.type == pygame.QUIT:
                 self.running = False
         self._update_objects()
-        if self.gs.turn_num >= self.gs.turn_limit or not self.gs.moves_left():
+        if self.gs.turn_num >= self.gs.turn_limit or not self.gs._calculate_if_moves_left():
             self.__init__(8,8,7,10,sprites,self.gr,self.gs.rand_state)
         if self.state is State.STANDBY:
             if not self._gems_blocking() and len(self.action_queue) > 0:
                 p1,p2 = self.action_queue[0]
                 self.advance_state(p1,p2)
                 self.action_queue.pop(0)
+                
         elif self.state is State.CLEARING:
             if not self._gems_blocking():
                 match_set = self.gs.get_matches()
@@ -118,12 +134,18 @@ class Match3:
                     self.gs._swap(self.prev_move[0],self.prev_move[1])
                     self.state = State.STANDBY
                     self._swap_back = False
+                    return
                 for p1 in match_set:
                     self.gems[p1].clear()
+                if len(match_set) > 0:
+                    sounds["gem_clear"].play()
+
                 self.state = State.SETTLING
         elif self.state is State.SETTLING:
             if not self._gems_blocking():
                 self.settle_step()
+               
+            
                 
         
         
@@ -138,6 +160,7 @@ class Match3:
         self._draw_prev_move()
         self._draw_turns_left(30,30,title_font)
         self._draw_score(self.p_width-150,30,title_font)
+        self._draw_credits(10,self.p_height-20,normal_font)
         self.display.blit(self.surface,(0,0))
 
     def advance_state(self,p1,p2):
@@ -160,6 +183,7 @@ class Match3:
     def settle_step(self):
         remove_set = self.gs.get_matches()
         if len(remove_set) > 0:
+            self.copy_board_to_gs()
             self._match_gems(remove_set)
             self.copy_board_to_gs()
             self.gs.gems_matched += len(remove_set)
@@ -195,14 +219,16 @@ class Match3:
         h_stack = -1*h_stack
         for point in remove_set:
             self.gems[point].gem_type = -1
+            self.gs.board[point] = -1
         for i in range(self.gs.rows-1,-1,-1):
             for j in range(0,self.gs.cols):
                 p1 = (i,j)
                 if self.gems[p1].gem_type == -1:
+                    self.gs.board[p1] = self.gs._copy_above(p1)
                     p2 = self._get_above(p1)
                     if p2 is None:
                         self.gems[p1].jump_to_grid((h_stack[p1[1]],p1[1]))
-                        self.gems[p1].gem_type = self.gs.generate_gem()
+                        self.gems[p1].gem_type = self.gs.board[p1]
                         h_stack[p1[1]] -= 1
                     else:
                         self._swap_gems(p1,p2)
@@ -298,24 +324,51 @@ class Match3:
         text = "Moves Left:"
         surface = title_font.render(text,True,pygame.Color(0,0,0))
         text_dim = title_font.size(text)
+        self._draw_text_outline(text,x,y,text_dim[0],text_dim[1],1.25,font,pygame.Color(255,255,255))
         self.surface.blit(surface,pygame.Rect(x,y,text_dim[0],text_dim[1]))
 
         text = str(self.gs.turn_limit-self.gs.turn_num)
         surface = title_font.render(text,True,pygame.Color(0,0,0))
         text_dim = title_font.size(text)
+        self._draw_text_outline(text,x,y+40,text_dim[0],text_dim[1],1.25,font,pygame.Color(255,255,255))
         self.surface.blit(surface,pygame.Rect(x,y+40,text_dim[0],text_dim[1]))        
 
     def _draw_score(self,x,y,font):
         text = "Score:"
         surface = font.render(text,True,pygame.Color(0,0,0))
         text_dim = font.size(text)
+        self._draw_text_outline(text,x,y,text_dim[0],text_dim[1],1.25,font,pygame.Color(255,255,255))
         self.surface.blit(surface,pygame.Rect(x,y,text_dim[0],text_dim[1]))
 
-        text = str(self.gs.gems_matched)
+        text = str(self.gs.gems_matched*100)
         surface = font.render(text,True,pygame.Color(0,0,0))
         text_dim = font.size(text)
+        self._draw_text_outline(text,x,y+40,text_dim[0],text_dim[1],1.25,font,pygame.Color(255,255,255))
         self.surface.blit(surface,pygame.Rect(x,y+40,text_dim[0],text_dim[1]))
-    
+    def _draw_credits(self,x,y,font):
+        text = "Gems by limbusdev, Sounds by ViRiX Dreamcore (soundcloud.com/virix)"
+        surface = font.render(text,True,pygame.Color(0,0,0))
+        text_dim = font.size(text)
+        self.surface.blit(surface,pygame.Rect(x,y,text_dim[0],text_dim[1]))
+
+    def _draw_text_outline(self,text,x,y,width,height,weight,font,color):
+        '''
+        Basic white outline by drawing the text 8 times with small radial offset
+        '''
+        offsets = [
+            (1,0),
+            (.707,.707),
+            (0,1),
+            (-.707,.707),
+            (-1,0),
+            (-.707,-.707),
+            (0,-1),
+            (.707,-.707)
+        ] #Unit circle values
+        text_surface = font.render(text,True,color)
+        for xOffset,yOffset in offsets:
+            self.surface.blit(text_surface,pygame.Rect(x+xOffset*weight,y+yOffset*weight,width,height))
+
     def _initialize_board(self):
         '''
         Spawn gem objects with correct sprite type
@@ -323,7 +376,7 @@ class Match3:
         self.gems = np.empty((self.gs.rows,self.gs.cols),dtype=Gem)
         for i in range(0,self.gs.rows):
             for j in range(0,self.gs.cols):
-                self.gems[i,j] = Gem(i,j,self.gs.board[i,j],200,self)
+                self.gems[i,j] = Gem(i,j,self.gs.board[i,j],300,self)
                 self.objects.append(self.gems[i,j])
     def copy_board_to_gs(self):
         for i in range(0,self.gs.rows):
@@ -347,7 +400,7 @@ if __name__ == "__main__":
     with tf.Session() as sess:
         sess.run(model.var_init)
         gr = GameRunner(sess, model, env, mem, MAX_EPSILON, MIN_EPSILON, LAMBDA)
-        num_episodes = 1 #10000
+        num_episodes = 100 #10000
         plot_interval = num_episodes
         cnt = 0
         while cnt < num_episodes:
@@ -358,7 +411,9 @@ if __name__ == "__main__":
         pygame.init()
         fonts = load_fonts("Fonts")
         title_font = pygame.font.Font(fonts['OldSansBlack'],30)
+        normal_font = pygame.font.Font(fonts['OldSansBlack'],15)
         sprites = load_sprites("Sprites")
+        sounds = load_sounds("Sounds")
         state = gr._env.rand_state
         game = Match3(8,8,7,10,sprites,gr,state)
         game.run()
