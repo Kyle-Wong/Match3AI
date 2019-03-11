@@ -118,7 +118,7 @@ class Match3:
             if event.type == pygame.QUIT:
                 self.running = False
         self._update_objects()
-        if self.gs.turn_num >= self.gs.turn_limit or not self.gs._calculate_if_moves_left():
+        if self.gs.turn_num >= self.gs.turn_limit or not self.gs.calculate_if_moves_left():
             self.__init__(8,8,7,10,sprites,self.gr,self.gs.rand_state)
         if self.state is State.STANDBY:
             if not self._gems_blocking() and len(self.action_queue) > 0:
