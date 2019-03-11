@@ -183,6 +183,7 @@ class Match3:
     def settle_step(self):
         remove_set = self.gs.get_matches()
         if len(remove_set) > 0:
+            self.copy_board_to_gs()
             self._match_gems(remove_set)
             self.copy_board_to_gs()
             self.gs.gems_matched += len(remove_set)
@@ -218,14 +219,16 @@ class Match3:
         h_stack = -1*h_stack
         for point in remove_set:
             self.gems[point].gem_type = -1
+            self.gs.board[point] = -1
         for i in range(self.gs.rows-1,-1,-1):
             for j in range(0,self.gs.cols):
                 p1 = (i,j)
                 if self.gems[p1].gem_type == -1:
+                    self.gs.board[p1] = self.gs._copy_above(p1)
                     p2 = self._get_above(p1)
                     if p2 is None:
                         self.gems[p1].jump_to_grid((h_stack[p1[1]],p1[1]))
-                        self.gems[p1].gem_type = self.gs.generate_gem()
+                        self.gems[p1].gem_type = self.gs.board[p1]
                         h_stack[p1[1]] -= 1
                     else:
                         self._swap_gems(p1,p2)

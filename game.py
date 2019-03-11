@@ -235,6 +235,7 @@ class GameState:
         while result in exclude:
             result = random.randint(0,self.gem_type_count-1)
         self.gem_count[result] += 1
+
         self.rand_state = random.getstate()
         return result
     def freq_board(self):
