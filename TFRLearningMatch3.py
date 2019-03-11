@@ -121,12 +121,18 @@ class GameRunner:
         print("Step {}, Total reward: {}, Eps: {}".format(self._steps, tot_reward, self._eps))
 
     def _choose_action(self, state):
+        '''
         action_list = self._env.get_valid_moves()
         if random.random() < self._eps:
             return action_list[random.randint(0, len(action_list) - 1)]
         else:
             return action_list[np.argmax(self._model.predict_one(state, self._sess)[0][action_list])]
-
+        '''
+        if random.random() < self._eps:
+            return random.randint(0, self._model.num_actions - 1)
+        else:
+            return np.argmax(self._model.predict_one(state, self._sess))
+        
     def _replay(self):
         batch = self._memory.sample(self._model.batch_size)
         states = np.array([val[0] for val in batch])

@@ -38,9 +38,9 @@ class GameState:
         remove_set = self.get_matches()
         if len(remove_set) == 0:
             self._swap(p1,p2)
-            return self.board, -10, False
+            reward = -10
         else:
-            reward = self._process_matches() - 3
+            reward = self._process_matches()
         self.calculate_if_moves_left()
         self.turn_num += 1
         done = self.turn_num >= self.turn_limit or self.no_moves_left
