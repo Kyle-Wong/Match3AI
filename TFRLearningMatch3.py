@@ -10,7 +10,7 @@ from game import GameState
 BATCH_SIZE = 100
 MAX_EPSILON = 1
 MIN_EPSILON = 0
-LAMBDA = 0.0005
+LAMBDA = 0.0002
 GAMMA = 1
 SEED = 7
 
@@ -82,13 +82,16 @@ class GameRunner:
         self._action_queue = []
 
     def run(self, render):
-        state = np.reshape(self._env.reset(), (1,-1))[0]
+        self._env.reset()
+        state = np.reshape(self._env.freq_board(), (1,-1))[0]
+
+        if not self._env.calculate_if_moves_left():
+            return
+        
         tot_reward = 0
         self._action_queue = []
+        
         while True:
-            if not self._env.moves_left():
-                break
-            
             action = self._choose_action(state)
             self._action_queue.append(self._moves[action])
             if render:
@@ -96,7 +99,7 @@ class GameRunner:
                 print(self._moves[action])
                     
             next_state, reward, done = self._env.advance_state(self._moves[action][0], self._moves[action][1])
-            next_state = np.reshape(next_state, (1,-1))[0]
+            next_state = np.reshape(self._env.freq_board(), (1,-1))[0]
 
             self._memory.add_sample((state, action, reward, next_state))
             self._replay()
@@ -120,14 +123,9 @@ class GameRunner:
     def _choose_action(self, state):
         action_list = self._env.get_valid_moves()
         if random.random() < self._eps:
-            action_list = self._env.get_valid_moves()
             return action_list[random.randint(0, len(action_list) - 1)]
         else:
-            sorted_actions = np.argsort(self._model.predict_one(state, self._sess))
-            for i in range(len(sorted_actions) - 1, -1, -1):
-                if i in action_list:
-                    return i
-            return action_list[random.randint(0, len(action_list) - 1)]
+            return action_list[np.argmax(self._model.predict_one(state, self._sess)[0][action_list])]
 
     def _replay(self):
         batch = self._memory.sample(self._model.batch_size)

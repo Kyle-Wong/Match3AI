@@ -41,7 +41,7 @@ class GameState:
             return self.board, -10, False
         else:
             reward = self._process_matches() - 3
-        self._calculate_if_moves_left()
+        self.calculate_if_moves_left()
         self.turn_num += 1
         done = self.turn_num >= self.turn_limit or self.no_moves_left
         return self.board, reward, done
@@ -70,7 +70,7 @@ class GameState:
     def print_board(self):
         print(self.board)
 
-    def _calculate_if_moves_left(self):
+    def calculate_if_moves_left(self):
         moves = get_all_pairs(self.rows, self.cols)
         for i in range(len(moves)):
             if self.move_is_valid(moves[i][0], moves[i][1]):
@@ -178,7 +178,7 @@ class GameState:
             #top row
             #find lowest null gem
             pb = p
-            while self.board[pb[0]+1,pb[1]] == NULL_GEM:
+            while pb[0]+1 < self.rows-1 and self.board[pb[0]+1,pb[1]] == NULL_GEM:
                 pb = (pb[0]+1, pb[1])
             #exclude neighbors to prevent a chance match
             exclude = [self.board[pb[0]+1,pb[1]]]
@@ -247,7 +247,7 @@ class GameState:
         #Sort by frequency first, then distance-from-origin 
         #(doesn't matter if same-frequency gems are ordered from furthest-from-origin or closest-to-origin)
         gems.sort(reverse = True)
-        print(gems)
+        #print(gems)
         gem_map = {}
         for i in range(0, len(gems)):
             #from most frequent to least frequent, assign 0 to gem_type_count
