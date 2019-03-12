@@ -311,9 +311,10 @@ class Match3Environment(Environment):
     def performAction(self,action):
         '''
         Perform an action on the world that changes it's internal state
-        'action' is an int index representing an swap
+        'action' is an array with a single int index representing an swap
         '''
-        p1,p2 = self.actions[action]
+        print(action[0])
+        p1,p2 = self.actions[int(action[0])]
         self.advance_state(p1,p2)
 
     def reset(self):

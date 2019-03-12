@@ -6,7 +6,6 @@ class Match3Task(Task):
         '''
         A filtered mapping to getSample of the underlying environment.
         '''
-        print("Get observation")
         return Task.getObservation(self)
 
     def getReward(self):

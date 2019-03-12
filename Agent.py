@@ -41,10 +41,11 @@ class Match3Agent(LearningAgent):
         for mask in self.lastobs:
             actions.append(self.module.activate(mask))
             values.append(self.module.maxvalue)
-        self.lastaction = getMaxAction(actions,values)
+        bestactionindex = getMaxAction(actions,values)
+        self.lastaction = actions[bestactionindex]
+        self.lastobs = self.lastobs[bestactionindex]
 
         if self.learning:
-            #I don't get what this is for
             self.lastaction = self.learner.explore(self.lastobs, self.lastaction)
 
         return self.lastaction
