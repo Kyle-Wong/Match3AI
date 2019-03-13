@@ -8,6 +8,7 @@ from pybrain.rl.experiments import Experiment
 from pybrain.rl.environments import Task
 import pylab
 import random
+import matplotlib.pyplot as plt
 
 from Agent import Match3Agent
 from Environment import Match3Environment
@@ -43,3 +44,5 @@ if __name__ == "__main__":
         agent.learn()
         agent.reset()
         i += 1
+    plt.plot(environment.reward_store)
+    plt.show()

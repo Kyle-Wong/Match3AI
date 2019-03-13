@@ -28,6 +28,8 @@ class Match3Environment(Environment):
         self.current_reward = 0
         self.actions = get_all_pairs(self.rows,self.cols)
             #updated when advance_state is called
+        self.reward_store = []
+            #used to plot reward gain
             
     def advance_state(self,p1,p2):
         #Swap gems
@@ -49,6 +51,7 @@ class Match3Environment(Environment):
 
         #Update reward of action just taken
         self.current_reward = reward
+        self.reward_store.append(reward)
         self.print_board()
         if done:
             self.reset()
@@ -322,6 +325,7 @@ class Match3Environment(Environment):
         self.gem_count = np.arange(0,self.gem_type_count,dtype=int)
         self.no_moves_left = False
         self.randomize_board()
+        self.reward_store = []
         return self.board
 
     def currentReward(self):
