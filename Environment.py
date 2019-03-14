@@ -43,7 +43,9 @@ class Match3Environment(Environment):
             self._swap(p1,p2)
             reward = -10
         else:
+            #self.print_board()
             reward = self._process_matches()
+            #self.print_board()
 
         #Check if there are any valid moves left
         self.calculate_if_moves_left()
@@ -52,7 +54,7 @@ class Match3Environment(Environment):
         #Update reward of action just taken
         self.current_reward = reward
         self.reward_store.append(reward)
-        self.print_board()
+        #self.print_board()
         if done:
             self.reset()
         return self.board, reward, done
@@ -325,16 +327,15 @@ class Match3Environment(Environment):
         Perform an action on the world that changes it's internal state
         'action' is an array with a single int index representing an swap
         '''
-        print(action[0])
+        #print(action[0])
         p1,p2 = self.actions[int(action[0])]
         self.advance_state(p1,p2)
 
     def reset(self):
-        print("BOARD RESET")
+        #print("BOARD RESET")
         self.gem_count = np.arange(0,self.gem_type_count,dtype=int)
         self.no_moves_left = False
         self.randomize_board()
-        self.reward_store = []
         return self.board
 
     def currentReward(self):

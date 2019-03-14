@@ -43,18 +43,30 @@ class Match3Agent(LearningAgent):
             values.append(self.module.maxvalue)
         bestactionindex = getMaxAction(actions,values)
         self.lastaction = actions[bestactionindex]
+        cachedaction = self.lastaction
         self.lastobs = self.lastobs[bestactionindex]
 
         if self.learning:
             self.lastaction = self.learner.explore(self.lastobs, self.lastaction)
 
+        #if cachedaction == self.lastaction:
+            #print(self.lastaction, ":", values[bestactionindex])
+        
         return self.lastaction
         
     def giveReward(self,r):
         """Step 3: store observation, action and 
         reward in the history dataset. """
         self.lastreward = r
-    
+        
+        # Clear history incrementally for performance
+        if self.history.getLength() > 100:
+            self.history.clear()
+            
+        self.history.addSample(self.lastobs, self.lastaction, self.lastreward)
+        
+        
+            
 
 def getMaxAction(actions,values):
     maxvalue = max(values)
