@@ -287,7 +287,16 @@ class Match3Environment(Environment):
             for j in range(0,self.cols):
                 mask[i,j] = '1' if (self.board[i,j] == gem_type) else '0'
         return [self._to_int(mask)]
-    
+    def print_mask(self,board_mask):
+        string = np.binary_repr(board_mask[0],width=self.rows*self.cols)
+        col = 0
+        for char in string:
+            if col >= self.cols:
+                col = 0
+                print("")
+            print(char + " ",end="")
+            col += 1
+
     def _get_obs(self):
         '''
         Return an observation of the board
