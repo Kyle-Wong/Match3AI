@@ -24,9 +24,11 @@ ROWS = 4
 COLS = 4
 GEM_TYPE_COUNT = 7
 SEED = 7
+BATCH_SIZE = 100
 OUTPUTFILE = "TrainedAIParams"
 SAVE = True
 LOAD = True
+
 def load_params(file_name,action_value_table):
     current_path = os.path.dirname(os.path.realpath(__file__))
     file_path = os.path.join(current_path,file_name)
@@ -69,26 +71,32 @@ if __name__ == "__main__":
     task = Match3Task(environment)
 
     experiment = Match3Experiment(task, agent)
-    num_episodes = num_states * 2
+    num_episodes = num_states * num_actions
     i = 0
+    
     try:
         if LOAD:
             load_params(OUTPUTFILE,controller)
+            
         while i < num_episodes:
             #AI has no memory of past states
             #learner resets in agent.reset()
             experiment.doInteractions(1)
-            agent.learn()
             #agent.reset()
             i += 1
-            print(np.shape(where(learner.module.params==1))[1], "unexplored")
-            if i % (num_episodes / 10) == 0:
-                print(float(i) / num_episodes)
+            if i % BATCH_SIZE == 0:
+                agent.learn()
+                agent.history.clear()
+                print(np.shape(where(learner.module.params==1))[1], "unexplored")
+                #print(float(i) / num_episodes)
+                
         plt.plot(average_splice(environment.reward_store, 20))
         plt.xlim(0, 19)
         plt.show()
+        
     except:
         pass
+    
     if SAVE:
         save_params(OUTPUTFILE,controller)
 

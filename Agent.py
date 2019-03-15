@@ -58,15 +58,8 @@ class Match3Agent(LearningAgent):
         """Step 3: store observation, action and 
         reward in the history dataset. """
         self.lastreward = r
-        
-        # Clear history incrementally for performance
-        if self.history.getLength() > 100:
-            self.history.clear()
-            
         self.history.addSample(self.lastobs, self.lastaction, self.lastreward)
-        
-        
-            
+                    
 
 def getMaxAction(actions,values):
     maxvalue = max(values)
