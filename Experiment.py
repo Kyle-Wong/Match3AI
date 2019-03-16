@@ -22,7 +22,7 @@ class Match3Experiment(Experiment):
         """
         self.stepid += 1
         self.agent.integrateObservation(self.task.getObservation())
-        self.task.performAction(self.agent.getAction())
+        self.task.performAction((self.agent.getAction(), self.agent.lastobs)) #Bundle board mask with action taken
         reward = self.task.getReward()
         self.agent.giveReward(reward)
         return reward

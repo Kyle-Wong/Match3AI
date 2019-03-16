@@ -27,6 +27,7 @@ class Match3Environment(Environment):
         self.no_moves_left = False
         self.current_reward = 0
         self.actions = get_all_pairs(self.rows,self.cols)
+        self.window_actions = get_all_pairs(4,4)
             #updated when advance_state is called
         self.reward_store = []
             #used to plot reward gain
@@ -246,32 +247,7 @@ class Match3Environment(Environment):
 
         self.rand_state = random.getstate()
         return result
-    def freq_board(self):
-        freq_board = np.zeros((self.rows,self.cols),dtype=int)
-        gems = []
-        for i in range(0,self.gem_type_count):
-            #Tuple (frequency, distance from origin (top left), gem type)
-            gems.append((self.gem_count[i],self._distance_from_origin(i),i))
-        #Sort by frequency first, then distance-from-origin 
-        #(doesn't matter if same-frequency gems are ordered from furthest-from-origin or closest-to-origin)
-        gems.sort(reverse = True)
-        #print(gems)
-        gem_map = {}
-        for i in range(0, len(gems)):
-            #from most frequent to least frequent, assign 0 to gem_type_count
-            gem_map[gems[i][2]] = i
-        for i in range(0,self.rows):
-            for j in range(0,self.cols):
-                freq_board[i,j] = gem_map[self.board[i,j]]
-        return freq_board
-
-    def _distance_from_origin(self,gem_type):
-        for i in range(0,self.rows):
-            for j in range(0,self.cols):
-                if self.board[i,j] == gem_type:
-                    return i*self.cols+j
-        return self.rows*self.cols
-
+    
     def _to_int(self,board_mask):
         '''
         Convert from board of 1's and 0's into
@@ -279,25 +255,27 @@ class Match3Environment(Environment):
         '''        
         return int(''.join(board_mask.flatten()),2)
 
-    def _get_mask(self,gem_type):
+    def _get_mask(self,board,gem_type):
         '''
         return a board where gems that are gem_type
         are 1 and others are 0
         '''
         mask = np.zeros((self.rows,self.cols),dtype=str)
-        for i in range(0,self.rows):
-            for j in range(0,self.cols):
-                mask[i,j] = '1' if (self.board[i,j] == gem_type) else '0'
+        for i in range(0,board.shape[1]):
+            for j in range(0,board.shape[0]):
+                mask[i,j] = '1' if (board[i,j] == gem_type) else '0'
         return [self._to_int(mask)]
+
     def print_mask(self,board_mask):
-        string = np.binary_repr(board_mask[0],width=self.rows*self.cols)
+        string = np.binary_repr(board_mask[0], width=16)
         col = 0
         for char in string:
-            if col >= self.cols:
+            if col >= 4:
                 col = 0
                 print("")
             print(char + " ",end="")
             col += 1
+        print("")
 
     def _get_obs(self):
         '''
@@ -308,7 +286,7 @@ class Match3Environment(Environment):
         '''
         masks = []
         for i in range(0,self.gem_type_count):
-            masks.append(self._get_mask(i))
+            masks.append(self._get_mask(self.board,i))
         return masks
 
     '''
@@ -325,14 +303,12 @@ class Match3Environment(Environment):
     def performAction(self,action):
         '''
         Perform an action on the world that changes it's internal state
-        'action' is an array with a single int index representing an swap
+        action is ([action#{0-23}],[board_as_int]). board_as_int is unused for non-GUI environment
         '''
-        #print(action[0])
         p1,p2 = self.actions[int(action[0])]
         self.advance_state(p1,p2)
 
     def reset(self):
-        #print("BOARD RESET")
         self.gem_count = np.arange(0,self.gem_type_count,dtype=int)
         self.no_moves_left = False
         self.randomize_board()
