@@ -77,17 +77,19 @@ if __name__ == "__main__":
     try:
         if LOAD:
             load_params(OUTPUTFILE,controller)
-            
+                
         while i < num_episodes:
             #AI has no memory of past states
             #learner resets in agent.reset()
             experiment.doInteractions(1)
             #agent.reset()
             i += 1
-            if i % BATCH_SIZE == 0:
-                agent.learn()
-                agent.history.clear()
-                print(np.shape(where(learner.module.params==1))[1], "unexplored")
+            agent.learn()
+            print(np.shape(where(learner.module.params==1))[1], "unexplored")
+            #if i % BATCH_SIZE == 0:
+                #agent.learn()
+                #agent.history.clear()
+                #print(np.shape(where(learner.module.params==1))[1], "unexplored")
                 #print(float(i) / num_episodes)
                 
         plt.plot(average_splice(environment.reward_store, 20))
