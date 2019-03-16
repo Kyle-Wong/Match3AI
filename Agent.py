@@ -53,13 +53,25 @@ class Match3Agent(LearningAgent):
             #print(self.lastaction, ":", values[bestactionindex])
         
         return self.lastaction
-        
+    
     def giveReward(self,r):
         """Step 3: store observation, action and 
         reward in the history dataset. """
         self.lastreward = r
+        if self.history.getLength() >= 2:
+            self.removeOldestHistory(1)
         self.history.addSample(self.lastobs, self.lastaction, self.lastreward)
-                    
+
+    def removeOldestHistory(self, n=1):
+        """
+        Remove the oldest n entries from the history
+        """
+        assert n < self.history.getLength()
+        newHistory = self.history.getSequence(0)
+        self.history.clear()
+        for i in range(n, len(newHistory[0])):
+            self.history.addSample(newHistory[0][i], newHistory[1][i], newHistory[2][i])
+                          
 
 def getMaxAction(actions,values):
     maxvalue = max(values)
