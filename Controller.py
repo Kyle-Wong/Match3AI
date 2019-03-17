@@ -23,4 +23,16 @@ class Match3ActionValueTable(ActionValueTable):
         
         return action
 
+    def getUnexploredAction(self,state,value=1.0,default=[0]):
+        #state is environment
+        '''
+        Return an action with a value equal to the given one
+        '''
+        values = self.params.reshape(self.numRows, self.numColumns)[int(state), :].flatten()
+        action = where(values == value)[0]
+        if default[0] in action or len(action) == 0:
+            return default[0]
+        
+        action = choice(action)
+        return action
 

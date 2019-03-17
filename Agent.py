@@ -2,6 +2,7 @@ from pybrain.rl.agents.logging import LoggingAgent
 from pybrain.rl.agents.learning import LearningAgent
 from scipy import where
 from random import choice
+from numpy import array
 class Match3Agent(LearningAgent):
 
     #bool self.learning -> inherited from LearningAgent.
@@ -48,7 +49,11 @@ class Match3Agent(LearningAgent):
 
         if self.learning:
             self.lastaction = self.learner.explore(self.lastobs, self.lastaction)
-
+            #If random choice, choose random non-explored choice
+            if cachedaction != self.lastaction:
+                cachedaction = self.lastaction
+                self.lastaction = array([self.module.getUnexploredAction(self.lastobs[0], default=self.lastaction)])
+                
         #if cachedaction == self.lastaction:
             #print(self.lastaction, ":", values[bestactionindex])
         
