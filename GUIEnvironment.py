@@ -81,7 +81,7 @@ class MaskInfo():
         self.mirrored = mirrored
         self.rotations = rotations
     def window_origin(self):
-        origin = divmod(self.index,4,dtype = int)
+        origin = divmod(self.index,5,dtype = int)
         return origin
     def print_info(self):
         print("Window " + str(self.index))
@@ -459,8 +459,8 @@ class Match3GUIEnvironment(Environment):
         Use self.windows to avoid repeated calculation
         '''
         result = []
-        for r in range(0,self.gs.rows-4):
-            for c in range(0,self.gs.cols-4):
+        for r in range(0,self.gs.rows-WINDOW_SIZE+1):
+            for c in range(0,self.gs.cols-WINDOW_SIZE+1):
                 result.append(board[r:r+4,c:c+4])
         return result
     def get_gem_masks(self,mask_set,gem_type):
