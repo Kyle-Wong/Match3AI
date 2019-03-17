@@ -53,7 +53,7 @@ def average_splice(a, n):
     splice = len(a) / n
     for i in range(n):
         result.append(np.average(a[int(splice*i):int(splice*(i+1))]))
-    return result
+    return np.arange(0, len(a), splice), result
 
 if __name__ == "__main__":
     
@@ -91,9 +91,9 @@ if __name__ == "__main__":
                 #agent.history.clear()
                 #print(np.shape(where(learner.module.params==1))[1], "unexplored")
                 #print(float(i) / num_episodes)
-                
-        plt.plot(average_splice(environment.reward_store, 20))
-        plt.xlim(0, 19)
+
+        x, y = average_splice(environment.reward_store, 20)
+        plt.plot(x, y)
         plt.show()
         
     except:
