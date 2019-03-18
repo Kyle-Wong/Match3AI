@@ -55,6 +55,31 @@ def average_splice(a, n):
         result.append(np.average(a[int(splice*i):int(splice*(i+1))]))
     return np.arange(0, len(a), splice), result
 
+def graph_results(data):
+    '''
+    Given results of each trial, record human-understandable results
+    '''
+    x, y = average_splice(data, 20)
+    plt.plot(x, y)
+    plt.title("Smoothed Learning Curve")
+    plt.xlabel("Move #")
+    plt.ylabel("Reward")
+    plt.show()
+    
+    y = data[:100]
+    plt.plot(np.arange(100), y)
+    plt.title("First 100 Move Learning")
+    plt.xlabel("Move #")
+    plt.ylabel("Reward")
+    plt.show()
+    
+    y = data[-100:]
+    plt.plot(np.arange(100), y)
+    plt.title("Last 100 Move Learning")
+    plt.xlabel("Move #")
+    plt.ylabel("Reward")
+    plt.show()
+
 if __name__ == "__main__":
     
     #Instantiate the environment with numInputs and numOutputs
@@ -91,12 +116,9 @@ if __name__ == "__main__":
                 #agent.history.clear()
                 #print(np.shape(where(learner.module.params==1))[1], "unexplored")
                 #print(float(i) / num_episodes)
-
-        x, y = average_splice(environment.reward_store, 20)
-        plt.plot(x, y)
-        plt.show()
+        graph_results(environment.reward_store)
         
-    except:
+    except KeyboardInterrupt:
         pass
     
     if SAVE:
