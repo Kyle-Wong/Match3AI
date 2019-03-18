@@ -55,29 +55,25 @@ def average_splice(a, n):
         result.append(np.average(a[int(splice*i):int(splice*(i+1))]))
     return np.arange(0, len(a), splice), result
 
-def graph_results(data):
+def graph_splice_results(data, title, xlabel, ylabel):
     '''
-    Given results of each trial, record human-understandable results
+    Given data and labels, turn into a spliced graph
     '''
     x, y = average_splice(data, 20)
     plt.plot(x, y)
-    plt.title("Smoothed Learning Curve")
-    plt.xlabel("Move #")
-    plt.ylabel("Reward")
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
     plt.show()
-    
-    y = data[:100]
-    plt.plot(np.arange(100), y)
-    plt.title("First 100 Move Learning")
-    plt.xlabel("Move #")
-    plt.ylabel("Reward")
-    plt.show()
-    
-    y = data[-100:]
-    plt.plot(np.arange(100), y)
-    plt.title("Last 100 Move Learning")
-    plt.xlabel("Move #")
-    plt.ylabel("Reward")
+
+def graph_results(data, title, xlabel, ylabel):
+    '''
+    Given data and labels, turn into a detailed graph
+    '''
+    plt.plot(np.arange(len(data)), data)
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
     plt.show()
 
 if __name__ == "__main__":
@@ -96,7 +92,7 @@ if __name__ == "__main__":
     task = Match3Task(environment)
 
     experiment = Match3Experiment(task, agent)
-    num_episodes = num_states * num_actions
+    num_episodes = 1000
     i = 0
     
     try:
@@ -116,7 +112,8 @@ if __name__ == "__main__":
                 #agent.history.clear()
                 #print(np.shape(where(learner.module.params==1))[1], "unexplored")
                 #print(float(i) / num_episodes)
-        graph_results(environment.reward_store)
+        graph_splice_results(environment.reward_store, "Relative Reward per Move", "Move #", "Reward")
+        graph_results(environment.score_store, "Score over Moves", "Move #", "Total Score")
         
     except KeyboardInterrupt:
         pass

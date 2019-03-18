@@ -16,7 +16,10 @@ class Match3Environment(Environment):
         self.rows = rows
         self.cols = cols
         self.score = 0
+        self.tot_score = 0
             #score in current GameState (subject to multipliers/combos)
+        self.score_store = []
+            #memory of all scores after each move
         self.gems_matched = 0
             #Raw number of gems cleared through matching
         self.moves_taken = 0
@@ -30,7 +33,7 @@ class Match3Environment(Environment):
         self.window_actions = get_all_pairs(4,4)
             #updated when advance_state is called
         self.reward_store = []
-            #used to plot reward gain
+            #used to plot reward/score gain
             
     def advance_state(self,p1,p2):
         #Swap gems
@@ -55,6 +58,7 @@ class Match3Environment(Environment):
         #Update reward of action just taken
         self.current_reward = reward
         self.reward_store.append(reward)
+        self.score_store.append(self.tot_score)
         #self.print_board()
         if done:
             self.reset()
@@ -106,8 +110,9 @@ class Match3Environment(Environment):
                 self.remove_null_gems(remove_set)
             self.gems_matched += len(remove_set)
             self.score += len(remove_set)
+            self.tot_score += len(remove_set) * 100
             first_iteration = False
-
+            
         return self.gems_matched - prev_matches
         
     def get_matches(self):
