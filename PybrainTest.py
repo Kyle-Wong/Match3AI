@@ -109,7 +109,7 @@ if __name__ == "__main__":
     task = Match3Task(environment)
 
     experiment = Match3Experiment(task, agent)
-    num_episodes = 500
+    num_episodes = 1000
     i = 0
     
     try:
