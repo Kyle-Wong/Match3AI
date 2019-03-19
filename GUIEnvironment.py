@@ -219,12 +219,12 @@ class Match3GUIEnvironment(Environment):
         matches = self.gs.get_matches()
         window_as_int = action[1][0]
         window = self.gs.int_to_matrix(window_as_int)
+                    
+        self.gs.current_reward = self.gs.get_reward(action)
         if len(matches) == 0:
             self._swap_back = True
-            self.gs.current_reward = -10
             self.gs._reset_streak()
         else:
-            self.gs.current_reward = self.gs.get_reward(action)
             self.gs._increment_streak()
             print("REWARD: " + str(self.gs.current_reward) + '\n')
 

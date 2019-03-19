@@ -43,17 +43,15 @@ class Match3Environment(Environment):
         self._swap(p1,p2)
         #Check if matches were made
         remove_set = self.get_matches()
-        
+        if action is not None:
+            reward = self.get_reward(action)
         #Swap back if no matches
         if len(remove_set) == 0:
             self._swap(p1,p2)
-            reward = -10
             self._reset_streak()
         else:
             #self.print_board()
-            reward = self._process_matches()
-            if action is not None:
-                reward = self.get_reward(action)
+            self._process_matches()
             self._increment_streak()
             #self.print_board()
 
@@ -318,7 +316,8 @@ class Match3Environment(Environment):
 
         for i in range(0,4):
             self._get_ones_matches_in_array('row',window[i],match_set,row=i)
-        return len(match_set)*10
+            return len(match_set)*10 if len(match_set) > 0 else -10
+            
 
 
     def _get_mask(self,board,gem_type):
