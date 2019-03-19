@@ -290,6 +290,9 @@ class Match3Environment(Environment):
         return result
 
     def get_reward(self,action):
+        #Break out if no board is given
+        if len(action) <= 1:
+            return 0
         window_as_int = action[1][0]
         window = self.int_to_matrix(window_as_int)
         p1,p2 = self.window_actions[int(action[0][0])]

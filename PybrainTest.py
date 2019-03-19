@@ -13,7 +13,6 @@ import pickle
 import os.path
 import numpy as np
 
-
 from Agent import Match3Agent
 from Environment import Match3Environment
 from Controller import Match3ActionValueTable
@@ -28,6 +27,8 @@ BATCH_SIZE = 100
 OUTPUTFILE = "TrainedAIParams"
 SAVE = True
 LOAD = True
+COMPARE_AGAINST_RANDOM = True
+
 
 def load_params(file_name,action_value_table):
     current_path = os.path.dirname(os.path.realpath(__file__))
@@ -76,6 +77,22 @@ def graph_results(data, title, xlabel, ylabel):
     plt.ylabel(ylabel)
     plt.show()
 
+def compare_against_random(turn_limit,rand_state,environment_score_store):
+    g = Match3Environment(4,4,7,rand_state)
+    i = 0
+    while i < turn_limit:
+        action = random.randint(0,23)
+        g.performAction([(action)])
+        i+= 1
+
+    plt.plot(np.arange(len(g.score_store)), g.score_store,'r-',label="Random AI")
+    plt.plot(np.arange(len(environment_score_store)), environment_score_store,'b-',label="Pybrain AI")
+    plt.legend()
+    plt.title("Score over Moves")
+    plt.xlabel("Move #")
+    plt.ylabel("Total Score")
+    plt.show()
+
 if __name__ == "__main__":
     
     #Instantiate the environment with numInputs and numOutputs
@@ -92,7 +109,7 @@ if __name__ == "__main__":
     task = Match3Task(environment)
 
     experiment = Match3Experiment(task, agent)
-    num_episodes = 1000
+    num_episodes = 500
     i = 0
     
     try:
@@ -117,7 +134,12 @@ if __name__ == "__main__":
         
     except KeyboardInterrupt:
         pass
-    
+    if COMPARE_AGAINST_RANDOM:
+        compare_against_random(num_episodes,rand_state,environment.score_store)
     if SAVE:
         save_params(OUTPUTFILE,controller)
+
+
+    
+
 
