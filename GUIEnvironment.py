@@ -194,7 +194,6 @@ class Match3GUIEnvironment(Environment):
         self.display.blit(self.surface,(0,0))
     def AI_train_step(self):
         experiment.doInteractions(1)
-        print("TRAIN STEP")
         if self.total_moves_taken % BATCH_SIZE == 0:
             agent.learn()
             agent.history.clear()
@@ -203,7 +202,7 @@ class Match3GUIEnvironment(Environment):
             for j in range(0,self.gs.cols):
                 self.gems[i,j].update()
 
-    def advance_state(self,p1,p2,mirrored=False,rotations=0):
+    def advance_state(self,p1,p2,action,mirrored=False,rotations=0):
         '''
         Do a swap and move into SWAP
         Abort if state is not STANDBY
@@ -218,11 +217,15 @@ class Match3GUIEnvironment(Environment):
         self._swap_gems(p1,p2)
         self.prev_move = (p1,p2)
         matches = self.gs.get_matches()
+        window_as_int = action[1][0]
+        window = self.gs.int_to_matrix(window_as_int)
         if len(matches) == 0:
             self._swap_back = True
             self.gs.current_reward = -10
         else:
-            self.gs.current_reward = 10*len(matches)
+            self.gs.current_reward = self.gs.get_reward(action)
+            print("REWARD: " + str(self.gs.current_reward) + '\n')
+
         self.total_moves_taken += 1
 
 
@@ -253,6 +256,7 @@ class Match3GUIEnvironment(Environment):
         self.gems[p2] = temp
         self.gems[p1].set_grid(p1)
         self.gems[p2].set_grid(p2)
+
     def _swap_gems_instant(self,p1,p2):
         '''
         Swap gems in the gems matrix
@@ -453,6 +457,8 @@ class Match3GUIEnvironment(Environment):
         for i in range(0,self.gs.rows):
             for j in range(0,self.gs.cols):
                 self.gs.board[i,j] = self.gems[i,j].gem_type
+
+    
     def _get_windows(self,board):
         '''
         return all 4x4 windows for the game board.
@@ -566,13 +572,11 @@ class Match3GUIEnvironment(Environment):
         Perform an action on the world that changes it's internal state
         action is ([action#{0-23}],[board_as_int]).
         '''
-        print(action)
         p1,p2 = self._translate_action(action)
         print("Translated swap: " + str((p1,p2)))
-        self.advance_state(p1,p2)
+        self.advance_state(p1,p2,action)
 
     def reset(self):
-        print("BOARD RESET")
         self.gs.reset()
         self._initialize_board()
         self.state = State.STANDBY
@@ -580,7 +584,6 @@ class Match3GUIEnvironment(Environment):
 
 
     def currentReward(self):
-        print(self.gs.currentReward())
         return self.gs.currentReward()
 
 

@@ -33,15 +33,14 @@ class Match3Environment(Environment):
         self.window_actions = get_all_pairs(4,4)
             #updated when advance_state is called
         self.reward_store = []
-            #used to plot reward/score gain
+            #used to plot reward gain
             
-    def advance_state(self,p1,p2):
+    def advance_state(self,p1,p2,action):
         #Swap gems
         self._swap(p1,p2)
-
         #Check if matches were made
         remove_set = self.get_matches()
-
+        
         #Swap back if no matches
         if len(remove_set) == 0:
             self._swap(p1,p2)
@@ -49,6 +48,8 @@ class Match3Environment(Environment):
         else:
             #self.print_board()
             reward = self._process_matches()
+            if action is not None:
+                reward = self.get_reward(action)
             #self.print_board()
 
         #Check if there are any valid moves left
@@ -157,6 +158,24 @@ class Match3Environment(Environment):
                 start_index = i
         if(gem_count >= GEM_NUM_FOR_MATCH):
             self._add_to_set(start_index,len(array),shape,array,remove_set,row,col)
+
+    def _get_ones_matches_in_array(self,shape,array,remove_set,row=-1,col=-1):
+        '''
+        Given a 1 dimensional array, get all 1's that are 3 or more in a row
+        '''
+        start_index = 0
+        gem_count = 0
+        for i,gem in enumerate(array):
+            if gem == 1:
+                if gem_count == 0:
+                    start_index = i
+                gem_count += 1
+            else:
+                if(gem_count >= GEM_NUM_FOR_MATCH):
+                    self._add_to_set(start_index,i,shape,array,remove_set,row,col)
+                gem_count = 0
+        if(gem_count >= GEM_NUM_FOR_MATCH):
+            self._add_to_set(start_index,len(array),shape,array,remove_set,row,col)
         
     def _add_to_set(self,start,end,shape,array,remove_set,row=-1,col=-1):
         '''
@@ -259,6 +278,34 @@ class Match3Environment(Environment):
         single integer
         '''        
         return int(''.join(board_mask.flatten()),2)
+    
+    def int_to_matrix(self,board_as_int):
+        string = np.binary_repr(board_as_int, width=16)
+        result = np.zeros((4,4),dtype=int)
+        index = 0
+        for char in string:
+            point = np.divmod(index,4,dtype = int)
+            result[(point[0],point[1])] = 1 if char == '1' else 0
+            index += 1
+        return result
+
+    def get_reward(self,action):
+        window_as_int = action[1][0]
+        window = self.int_to_matrix(window_as_int)
+        p1,p2 = self.window_actions[int(action[0][0])]
+
+        #swap inside the window
+        t = window[p1[0]][p1[1]]
+        window[p1[0]][p1[1]] = window[p2[0]][p2[1]]
+        window[p2[0]][p2[1]] = t
+        match_set = set()
+        for i in range(0,4):
+            self._get_ones_matches_in_array('col',window[:,i],match_set,col=i)
+
+        for i in range(0,4):
+            self._get_ones_matches_in_array('row',window[i],match_set,row=i)
+        return len(match_set)*10
+
 
     def _get_mask(self,board,gem_type):
         '''
@@ -311,7 +358,7 @@ class Match3Environment(Environment):
         action is ([action#{0-23}],[board_as_int]). board_as_int is unused for non-GUI environment
         '''
         p1,p2 = self.actions[int(action[0])]
-        self.advance_state(p1,p2)
+        self.advance_state(p1,p2,action)
 
     def reset(self):
         self.gem_count = np.arange(0,self.gem_type_count,dtype=int)
