@@ -222,8 +222,10 @@ class Match3GUIEnvironment(Environment):
         if len(matches) == 0:
             self._swap_back = True
             self.gs.current_reward = -10
+            self.gs._reset_streak()
         else:
             self.gs.current_reward = self.gs.get_reward(action)
+            self.gs._increment_streak()
             print("REWARD: " + str(self.gs.current_reward) + '\n')
 
         self.total_moves_taken += 1

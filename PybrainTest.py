@@ -28,7 +28,7 @@ OUTPUTFILE = "TrainedAIParams"
 SAVE = True
 LOAD = True
 COMPARE_AGAINST_RANDOM = True
-
+STREAK_HISTOGRAM = True
 
 def load_params(file_name,action_value_table):
     current_path = os.path.dirname(os.path.realpath(__file__))
@@ -93,6 +93,13 @@ def compare_against_random(turn_limit,rand_state,environment_score_store):
     plt.ylabel("Total Score")
     plt.show()
 
+def plot_histogram(data, title, xlabel, ylabel):
+    plt.hist(data)
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.show()
+
 if __name__ == "__main__":
     
     #Instantiate the environment with numInputs and numOutputs
@@ -136,6 +143,8 @@ if __name__ == "__main__":
         pass
     if COMPARE_AGAINST_RANDOM:
         compare_against_random(num_episodes,rand_state,environment.score_store)
+    if STREAK_HISTOGRAM:
+        plot_histogram(environment.streak_store,"Scoring-Action Streak Length", "Streak Length", "Actions taken")
     if SAVE:
         save_params(OUTPUTFILE,controller)
 

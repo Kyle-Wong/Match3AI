@@ -34,6 +34,9 @@ class Match3Environment(Environment):
             #updated when advance_state is called
         self.reward_store = []
             #used to plot reward gain
+        self.streak_store = []
+            #Stores how many good actions the AI takes in a row
+        self.streak_counter = 0
             
     def advance_state(self,p1,p2,action):
         #Swap gems
@@ -45,11 +48,13 @@ class Match3Environment(Environment):
         if len(remove_set) == 0:
             self._swap(p1,p2)
             reward = -10
+            self._reset_streak()
         else:
             #self.print_board()
             reward = self._process_matches()
             if action is not None:
                 reward = self.get_reward(action)
+            self._increment_streak()
             #self.print_board()
 
         #Check if there are any valid moves left
@@ -78,7 +83,7 @@ class Match3Environment(Environment):
             if self.move_is_valid(moves[i][0], moves[i][1]):
                 result.append(i)
         return result
-
+    
     def _swap(self,p1,p2):
         if not self.valid(p1,p2):
             raise InputError(self.board,p1,p2)
@@ -187,7 +192,13 @@ class Match3Environment(Environment):
                 remove_set.add((row,i))
             elif(shape == 'col'):
                 remove_set.add((i,col))
-                
+    def _increment_streak(self):
+        self.streak_counter += 1
+
+    def _reset_streak(self):
+        self.streak_store.append(self.streak_counter)
+        self.streak_counter = 0          
+
     def in_bounds(self,p):
         return p[0] >= 0 and p[0] < self.rows and p[1] >= 0 and p[1] < self.cols
     
