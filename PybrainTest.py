@@ -94,7 +94,7 @@ def compare_against_random(turn_limit,rand_state,environment_score_store):
     plt.show()
 
 def plot_histogram(data, title, xlabel, ylabel):
-    plt.hist(data)
+    plt.hist(data,bins=[0,1,2,3,4,5,6,7,8,9,10,11,12])
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
@@ -141,6 +141,7 @@ if __name__ == "__main__":
         
     except KeyboardInterrupt:
         pass
+    print("GOOD-MOVES PERCENT: " + str(environment.good_move_counter/environment.moves_taken*100) + "%")
     if COMPARE_AGAINST_RANDOM:
         compare_against_random(num_episodes,rand_state,environment.score_store)
     if STREAK_HISTOGRAM:

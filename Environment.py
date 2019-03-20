@@ -37,6 +37,7 @@ class Match3Environment(Environment):
         self.streak_store = []
             #Stores how many good actions the AI takes in a row
         self.streak_counter = 0
+        self.good_move_counter = 0
             
     def advance_state(self,p1,p2,action):
         #Swap gems
@@ -63,6 +64,7 @@ class Match3Environment(Environment):
         self.current_reward = reward
         self.reward_store.append(reward)
         self.score_store.append(self.tot_score)
+        self.moves_taken += 1
         #self.print_board()
         if done:
             self.reset()
@@ -191,6 +193,7 @@ class Match3Environment(Environment):
             elif(shape == 'col'):
                 remove_set.add((i,col))
     def _increment_streak(self):
+        self.good_move_counter += 1
         self.streak_counter += 1
 
     def _reset_streak(self):
