@@ -3,6 +3,7 @@ A Match3 AI created by Kyle Wong, Tyler Gemora, Taylor Conniff, Nicholas Sprague
 
 Run the executable "AITesting.py" to see our trained AI in action.
 
+Requires Python 3.7.2
 Requires Pybrain to train the AI 
     Installation instructions at: http://pybrain.org/docs/quickstart/installation.html
 Requires Pygame to run the GUI
