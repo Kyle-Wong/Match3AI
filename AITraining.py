@@ -19,16 +19,21 @@ from Controller import Match3ActionValueTable
 from Experiment import Match3Experiment
 from Task import Match3Task
 
+'''
+Run this module to train the AI
+REQUIRES PYBRAIN
+'''
+
+
 ROWS = 4
 COLS = 4
 GEM_TYPE_COUNT = 7
 SEED = 7
-BATCH_SIZE = 100
 OUTPUTFILE = "TrainedAIParams"
 SAVE = True
 LOAD = True
-COMPARE_AGAINST_RANDOM = True
-STREAK_HISTOGRAM = True
+COMPARE_AGAINST_RANDOM = False
+STREAK_HISTOGRAM = False
 
 def load_params(file_name,action_value_table):
     current_path = os.path.dirname(os.path.realpath(__file__))
@@ -124,30 +129,22 @@ if __name__ == "__main__":
             load_params(OUTPUTFILE,controller)
                 
         while i < num_episodes:
-            #AI has no memory of past states
-            #learner resets in agent.reset()
             experiment.doInteractions(1)
-            #agent.reset()
             i += 1
             agent.learn()
-            print(np.shape(where(learner.module.params==1))[1], "unexplored")
-            #if i % BATCH_SIZE == 0:
-                #agent.learn()
-                #agent.history.clear()
-                #print(np.shape(where(learner.module.params==1))[1], "unexplored")
-                #print(float(i) / num_episodes)
         graph_splice_results(environment.reward_store, "Relative Reward per Move", "Move #", "Reward")
         graph_results(environment.score_store, "Score over Moves", "Move #", "Total Score")
         
     except KeyboardInterrupt:
         pass
+    if SAVE:
+        save_params(OUTPUTFILE,controller)
     print("GOOD-MOVES PERCENT: " + str(environment.good_move_counter/environment.moves_taken*100) + "%")
     if COMPARE_AGAINST_RANDOM:
         compare_against_random(num_episodes,rand_state,environment.score_store)
     if STREAK_HISTOGRAM:
         plot_histogram(environment.streak_store,"Scoring-Action Streak Length", "Streak Length", "Actions taken")
-    if SAVE:
-        save_params(OUTPUTFILE,controller)
+    
 
 
     

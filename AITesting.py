@@ -1,13 +1,49 @@
-from game import GameState
 from Gem import *
-from TFRLearningMatch3 import *
-import random
 import pygame
 import os.path
 from enum import Enum
-import tensorflow as tf
 import numpy as np
 import math
+from pybrain.rl.environments.environment import Environment
+from scipy import *
+import sys, time
+from pybrain.rl.environments.mazes import Maze, MDPMazeTask
+from pybrain.rl.learners.valuebased import ActionValueTable
+from pybrain.rl.agents import LearningAgent
+from pybrain.rl.learners import Q, SARSA
+from pybrain.rl.experiments import Experiment
+from pybrain.rl.environments import Task
+import pylab
+import random
+import matplotlib.pyplot as plt
+
+from Agent import Match3Agent
+from Environment import Match3Environment
+from Controller import Match3ActionValueTable
+from Experiment import Match3Experiment
+from Task import Match3Task
+import pickle
+
+'''
+----------------------------------------------------------------------------------------------------
+Run this module to run the game GUI
+REQUIRES PYBRAIN AND PYGAME
+----------------------------------------------------------------------------------------------------
+'''
+ROWS = 8
+COLS = 8
+WINDOW_SIZE = 4
+GEM_TYPE_COUNT = 7
+SPEED = 1
+GAMESEED = 15
+experiment = None
+agent = None
+OUTPUTFILE = "TrainedAIParams"
+BATCH_SIZE = 2
+LOAD = True
+SAVE = True
+
+
 class State(Enum):
     STANDBY = 1
     CLEARING = 2
@@ -57,24 +93,50 @@ def load_sounds(folder):
         print(s)
     return sounds
 
-GAMESEED = 111 #Static random number generator seed
-TRAINING_ROUNDS = 100 #Display GUI after X training rounds
-GAME_RUNNING = False
-class Match3:
+def load_params(file_name,action_value_table):
+    current_path = os.path.dirname(os.path.realpath(__file__))
+    file_path = os.path.join(current_path,file_name)
+    if os.path.getsize(file_path) <= 0:
+        return
 
-    def __init__(self,rows,cols,gem_type_count,turn_limit,sprites,gr,rand_state = random.getstate()):
-        GAME_RUNNING = True
-        self.gr = gr
+    file = open(file_path,'rb')
+    controller._setParameters(pickle.load(file))
+    print("Loading: " + str(controller.params))
+def save_params(file_name,action_value_table):
+    current_path = os.path.dirname(os.path.realpath(__file__))
+    file = open(os.path.join(current_path,file_name),'wb')
+    pickle.dump(controller.params,file)
+    print("Saving: " + str(controller.params))
+
+
+
+
+
+
+class MaskInfo():
+
+    def __init__(self, window_index, mirrored, rotations):
+        self.index = window_index
+        self.mirrored = mirrored
+        self.rotations = rotations
+    def window_origin(self):
+        origin = divmod(self.index,5,dtype = int)
+        return origin
+    def print_info(self):
+        print("Window " + str(self.index))
+        print("  w_origin (row,col): " + str(self.window_origin()))
+        print("  mirrored          : " + str(self.mirrored))
+        print("  rotations         : " + str(self.rotations))
+
+class Match3GUIEnvironment(Environment):
+
+    def __init__(self,rows,cols,gem_type_count,speed,sprites,rand_state = random.getstate()):
         self.sprites = sprites
         self.p_width = 930 #Pixel width
         self.p_height = 600 #Pixel height
-
-        self.gs = GameState(rows,cols,gem_type_count,turn_limit,self.gr._env.rand_state) #GameState
-        gr.run(False)
+        self.speed = 1/speed
+        self.gs = Match3Environment(rows,cols,gem_type_count,rand_state) #GameState
         
-        self.action_queue = gr._action_queue
-                                #list of pairs ( (p1.x,p1.y), (p2.x,p2.y) ) to be
-                                #run sequentially as swaps in the game
         self.display = pygame.display.set_mode((self.p_width,self.p_height))
         self.board_rect = pygame.Rect(215,0,500,500) #Game board bounding box
         self.tile_w = self.board_rect.w/self.gs.cols #Width of a board tile
@@ -91,7 +153,12 @@ class Match3:
         self.prev_matches = 0 #Gems matched prior to current action
         self.improvement = 0 #self.gems_matched - prev_matches
         self._swap_back = False
+        self.total_moves_taken = 0
+        self.total_score = 0
+        self.mask_dict = {} # {board_as_int : MaskInfo} pairs
+        self.windows = self._get_windows(self.gs.board)
         
+        self.paused = False
         
     def run(self):
         '''
@@ -100,7 +167,7 @@ class Match3:
         
         
         while self.running:
-            self.delta_time = self.clock.get_time()/1000
+            self.delta_time = self.clock.get_time()/1000/self.speed
             self.update()
             self.draw()
             pygame.display.flip()
@@ -117,14 +184,13 @@ class Match3:
                 self._handle_key_down(event)
             if event.type == pygame.QUIT:
                 self.running = False
-        self._update_objects()
-        if self.gs.turn_num >= self.gs.turn_limit or not self.gs.calculate_if_moves_left():
-            self.__init__(8,8,7,10,sprites,self.gr,self.gs.rand_state)
+        self.update_gems()
+
         if self.state is State.STANDBY:
-            if not self._gems_blocking() and len(self.action_queue) > 0:
-                p1,p2 = self.action_queue[0]
-                self.advance_state(p1,p2)
-                self.action_queue.pop(0)
+            if self.paused:
+                return
+            if not self._gems_blocking():
+                self.AI_train_step()
                 
         elif self.state is State.CLEARING:
             if not self._gems_blocking():
@@ -134,6 +200,7 @@ class Match3:
                     self.gs._swap(self.prev_move[0],self.prev_move[1])
                     self.state = State.STANDBY
                     self._swap_back = False
+
                     return
                 for p1 in match_set:
                     self.gems[p1].clear()
@@ -161,24 +228,47 @@ class Match3:
         self._draw_turns_left(30,30,title_font)
         self._draw_score(self.p_width-150,30,title_font)
         self._draw_credits(10,self.p_height-20,normal_font)
+        if self.paused:
+            self._draw_pause_overlay(410, 500, title_font)
         self.display.blit(self.surface,(0,0))
+    def AI_train_step(self):
+        experiment.doInteractions(1)
+        if self.total_moves_taken % BATCH_SIZE == 0:
+            agent.learn()
+            agent.history.clear()
+    def update_gems(self):
+        for i in range(0,self.gs.rows):
+            for j in range(0,self.gs.cols):
+                self.gems[i,j].update()
 
-    def advance_state(self,p1,p2):
+    def advance_state(self,p1,p2,action,mirrored=False,rotations=0):
         '''
         Do a swap and move into SWAP
         Abort if state is not STANDBY
         '''
+        '''
         if self.state is not State.STANDBY:
             return
+        '''
         self.state = State.CLEARING
         self.prev_matches = self.gs.gems_matched
         self.gs._swap(p1,p2)
         self._swap_gems(p1,p2)
         self.prev_move = (p1,p2)
-        if len(self.gs.get_matches()) == 0:
+        matches = self.gs.get_matches()
+        window_as_int = action[1][0]
+        window = self.gs.int_to_matrix(window_as_int)
+                    
+        self.gs.current_reward = self.gs.get_reward(action)
+        if len(matches) == 0:
             self._swap_back = True
+            self.gs._reset_streak()
+        else:
+            self.gs._increment_streak()
+            print("REWARD: " + str(self.gs.current_reward) + '\n')
 
-        self.gs.turn_num += 1
+        self.total_moves_taken += 1
+
 
     def settle_step(self):
         remove_set = self.gs.get_matches()
@@ -186,12 +276,17 @@ class Match3:
             self.copy_board_to_gs()
             self._match_gems(remove_set)
             self.copy_board_to_gs()
-            self.gs.gems_matched += len(remove_set)
-            self.gs.score += len(remove_set)
+            match_count = len(remove_set)
+            self.gs.gems_matched += match_count
+            self.gs.score += match_count
+            self.total_score += match_count
             self.state = State.CLEARING
         else:
             self.state = State.STANDBY
             self.improvement = self.gs.gems_matched-self.prev_matches
+            if not self.gs.calculate_if_moves_left():
+                self.reset()
+
     def _swap_gems(self,p1,p2):
         '''
         Swap gems in the gems matrix
@@ -202,6 +297,7 @@ class Match3:
         self.gems[p2] = temp
         self.gems[p1].set_grid(p1)
         self.gems[p2].set_grid(p2)
+
     def _swap_gems_instant(self,p1,p2):
         '''
         Swap gems in the gems matrix
@@ -262,29 +358,28 @@ class Match3:
         if event.key == pygame.K_ESCAPE:
             self.running = False
         if event.key == pygame.K_SPACE:
-            self.advance_state((6,3),(6,4))
+            self.paused = not self.paused
         if event.key == pygame.K_r:
             self.__init__(8,8,7,10,sprites,state)
-    def _update_objects(self):
-        for o in self.objects:
-            o.update()
+        
+
     def _draw_board(self,x,y,width,height):
         '''
         Draw game board background
         '''
         step_w = (int)(width/self.gs.cols)
         step_h = (int)(height/self.gs.rows)
-        self.sub_surface = pygame.Surface((step_w,step_h))
+        sub_surface = pygame.Surface((step_w,step_h))
         color = pygame.Color(0,0,0)
         for i in range(0,self.gs.rows):
             for j in range(0,self.gs.cols):
                 rect = pygame.Rect(x+j*step_w,y+i*step_h,step_w,step_h)
-                self.sub_surface.fill(pygame.Color(30,30,30))
+                sub_surface.fill(pygame.Color(30,30,30))
                 if (i+j)%2 == 0:
-                    self.sub_surface.set_alpha(150)
+                    sub_surface.set_alpha(150)
                 else:
-                    self.sub_surface.set_alpha(90)
-                self.surface.blit(self.sub_surface,rect)
+                    sub_surface.set_alpha(90)
+                self.surface.blit(sub_surface,rect)
         pygame.draw.rect(self.surface,pygame.Color(0,0,0)\
                          ,pygame.Rect(x,y,step_w*self.gs.cols,\
                         step_w*self.gs.rows),5)
@@ -321,17 +416,17 @@ class Match3:
         y += offset_y
         self.surface.blit(self.sprites['background'],(x,y))
     def _draw_turns_left(self,x,y,font):
-        text = "Moves Left:"
+        text = "Moves Taken:"
         surface = title_font.render(text,True,pygame.Color(0,0,0))
         text_dim = title_font.size(text)
         self._draw_text_outline(text,x,y,text_dim[0],text_dim[1],1.25,font,pygame.Color(255,255,255))
         self.surface.blit(surface,pygame.Rect(x,y,text_dim[0],text_dim[1]))
-
-        text = str(self.gs.turn_limit-self.gs.turn_num)
+        
+        text = str(self.total_moves_taken)
         surface = title_font.render(text,True,pygame.Color(0,0,0))
         text_dim = title_font.size(text)
         self._draw_text_outline(text,x,y+40,text_dim[0],text_dim[1],1.25,font,pygame.Color(255,255,255))
-        self.surface.blit(surface,pygame.Rect(x,y+40,text_dim[0],text_dim[1]))        
+        self.surface.blit(surface,pygame.Rect(x,y+40,text_dim[0],text_dim[1]))     
 
     def _draw_score(self,x,y,font):
         text = "Score:"
@@ -340,7 +435,7 @@ class Match3:
         self._draw_text_outline(text,x,y,text_dim[0],text_dim[1],1.25,font,pygame.Color(255,255,255))
         self.surface.blit(surface,pygame.Rect(x,y,text_dim[0],text_dim[1]))
 
-        text = str(self.gs.gems_matched*100)
+        text = str(self.total_score*100)
         surface = font.render(text,True,pygame.Color(0,0,0))
         text_dim = font.size(text)
         self._draw_text_outline(text,x,y+40,text_dim[0],text_dim[1],1.25,font,pygame.Color(255,255,255))
@@ -350,6 +445,26 @@ class Match3:
         surface = font.render(text,True,pygame.Color(0,0,0))
         text_dim = font.size(text)
         self.surface.blit(surface,pygame.Rect(x,y,text_dim[0],text_dim[1]))
+    def _draw_pause_overlay(self,x,y,font):
+        overlay = pygame.Surface((self.p_width,self.p_height))
+        overlay.fill(pygame.Color(0,0,0))
+        overlay.set_alpha(120)
+        self.surface.blit(overlay,pygame.Rect(0,0,self.p_width,self.p_height))
+        
+        text = "PAUSED"
+        surface = font.render(text,True,pygame.Color(128,128,0))
+        text_dim = font.size(text)
+        self._draw_text_outline(text,x,y,text_dim[0],text_dim[1],1.25,font,pygame.Color(255,255,255))
+        self.surface.blit(surface,pygame.Rect(x,y,text_dim[0],text_dim[1]))
+
+        text = "Space to Unpause"
+        surface = font.render(text,True,pygame.Color(128,128,0))
+        text_dim = font.size(text)
+        self._draw_text_outline(text,x-65,y+40,text_dim[0],text_dim[1],1.25,font,pygame.Color(255,255,255))
+        self.surface.blit(surface,pygame.Rect(x-65,y+40,text_dim[0],text_dim[1]))
+
+        
+
 
     def _draw_text_outline(self,text,x,y,width,height,weight,font,color):
         '''
@@ -378,47 +493,178 @@ class Match3:
             for j in range(0,self.gs.cols):
                 self.gems[i,j] = Gem(i,j,self.gs.board[i,j],300,self)
                 self.objects.append(self.gems[i,j])
+
     def copy_board_to_gs(self):
         for i in range(0,self.gs.rows):
             for j in range(0,self.gs.cols):
                 self.gs.board[i,j] = self.gems[i,j].gem_type
 
+    
+    def _get_windows(self,board):
+        '''
+        return all 4x4 windows for the game board.
+        Use self.windows to avoid repeated calculation
+        '''
+        result = []
+        for r in range(0,self.gs.rows-WINDOW_SIZE+1):
+            for c in range(0,self.gs.cols-WINDOW_SIZE+1):
+                result.append(board[r:r+4,c:c+4])
+        return result
+    def get_gem_masks(self,mask_set,gem_type):
+        '''
+        For a specific gem type, get all combinations of rotations and mirrors as
+        masks and return them.
+        '''
+        board = self.gs.board
+        result = []
+        for mirrored in range(0,2): #Mirror
+            for rotations in range(0,4):  #Rotate 4 times
+                for index, window in enumerate(self.windows): #iterate through all windows
+                    w = np.fliplr(window) if mirrored==1 else window #apply mirroring
+                    w = np.rot90(window,rotations) #apply rotations
+                    window_as_int = self.gs._get_mask(w,gem_type)
+
+                    if window_as_int[0] in mask_set: #Skip if mask has already been found (mask_dict can't have duplicate keys)
+                        continue
+
+                    mask_set.add(window_as_int[0])   #Do not allow duplicate masks
+                    result.append(window_as_int)
+                    self.mask_dict[window_as_int[0]] = MaskInfo(index,mirrored==1,rotations) #Associate mask with MaskInfo           
+        return result
+        
+    def get_masks(self):
+        '''
+        Get all UNIQUE gem masks.  Get masks for each gem, for all 
+        combinations of rotations and mirrors.  Store the rotation and
+        mirroring data in self.mask_dict translate action for 8x8 board
+        '''
+        masks = []
+        mask_set = set() #contains ints representing 4x4 state
+        #self.mask_dict => {int : MaskInfo}
+        self.mask_dict = {} #Clear mask_dict between actions
+        for i in range(0,self.gs.gem_type_count):
+            masks.extend(self.get_gem_masks(mask_set,i))
+        return masks
+    def _rotate_coord_cw(self,point,rotations):
+        '''
+        Rotate a coordinate point clockwise on a 4x4 board
+        Formula is: (r,c) -> (c,(4-1)-r)
+        '''
+        for i in range(0,rotations):
+            point = (point[1],(WINDOW_SIZE-1)-point[0])
+        return point
+    def _unmirror_coord(self,point):
+        '''
+        Translate a coordinate to its mirrored point, mirroring across the vertical axis
+        Formula is (r,c) -> (r,(4-1)-c)
+        '''
+        return (point[0],(WINDOW_SIZE)-1-point[1])
+    def _shift_coord(self,point,offset):
+        '''
+        Do an actual translation from a point by an offset
+        '''
+        return (point[0]+offset[0],point[1]+offset[1])
+    def _translate_action(self,action):
+        '''
+        action is ([action#{0-23}],[board_as_int]).
+        Translate the action number of a 4x4 board to the pair of points
+        for a swap on an 8x8 board.
+        '''
+        
+        #Get swap pair RELATIVE TO 4x4 state
+        p1,p2 = self.gs.window_actions[int(action[0][0])]
+        #Get the board associatec with this action--for lookup for translation values
+        board_as_int = action[1][0]
+
+        print(self.gs.window_actions[int(action[0][0])])
+        print(self.gs.print_mask(action[1]))
+        self.mask_dict[board_as_int].print_info()
+
+        #Get the information about the board
+        #so the swap coordinates can be translated
+        #to coordinates in the 8x8 board
+        mask_info = self.mask_dict[board_as_int]
+        offset = mask_info.window_origin()
+
+        #each point must be rotated, mirrored, and then shifted by
+        #the window offset, in that order
+        p1 = self._rotate_coord_cw(p1,mask_info.rotations)
+        p1 = self._unmirror_coord(p1) if mask_info.mirrored else p1
+        p1 = self._shift_coord(p1,offset)
+
+        p2 = self._rotate_coord_cw(p2,mask_info.rotations)
+        p2 = self._unmirror_coord(p2) if mask_info.mirrored else p2
+        p2 = self._shift_coord(p2,offset)
+
+        return (p1,p2)
+    '''
+    -----------Pybrain environment interface ------------------------
+    '''
+
+    def getSensors(self):
+        '''
+        The currently visible state of the world.
+        Returns an array of gem masks
+        '''
+        return self.get_masks()
+
+    def performAction(self,action):
+        '''
+        Perform an action on the world that changes it's internal state
+        action is ([action#{0-23}],[board_as_int]).
+        '''
+        p1,p2 = self._translate_action(action)
+        print("Translated swap: " + str((p1,p2)))
+        self.advance_state(p1,p2,action)
+
+    def reset(self):
+        self.gs.reset()
+        self._initialize_board()
+        self.state = State.STANDBY
+        self._swap_back = False
+
+
+    def currentReward(self):
+        return self.gs.currentReward()
 
 
 if __name__ == "__main__":
 
     
+    pygame.init()
+
     random.seed(GAMESEED) #Set static seed
-    state = random.getstate()
-    env = GameState(8, 8, 7, 10,state)
+    rand_state = random.getstate()
+    fonts = load_fonts("Fonts")
+    title_font = pygame.font.Font(fonts['OldSansBlack'],30)
+    normal_font = pygame.font.Font(fonts['OldSansBlack'],15)
+    sprites = load_sprites("Sprites")
+    sounds = load_sounds("Sounds")
+    
+    num_states = 2**16
+    num_actions = 24
+    environment = Match3GUIEnvironment(ROWS,COLS,GEM_TYPE_COUNT,1,sprites,rand_state)
+    controller = Match3ActionValueTable(num_states, num_actions)
+    controller.initialize(1.)
+    load_params(OUTPUTFILE,controller)
+    learner = Q()
+    agent = Match3Agent(controller, learner)
+    task = Match3Task(environment)
 
-    num_states = env.cols * env.rows
-    num_actions = env.cols * (env.rows - 1) + env.rows * (env.cols - 1)
-
-    model = Model(num_states, num_actions, BATCH_SIZE)
-    mem = Memory(50000)
-    with tf.Session() as sess:
-        sess.run(model.var_init)
-        gr = GameRunner(sess, model, env, mem, MAX_EPSILON, MIN_EPSILON, LAMBDA)
-        num_episodes = 100 #10000
-        plot_interval = num_episodes
-        cnt = 0
-        while cnt < num_episodes:
-            gr.run(cnt >= num_episodes - 1)
-            cnt += 1
+    experiment = Match3Experiment(task, agent)
+    environment.gs.print_board()
+    environment.run()  
+    try:
+        if LOAD:
+            load_params(OUTPUTFILE,controller)  
+    except:
+        pass
+    
+    if SAVE:
+        save_params(OUTPUTFILE,controller)
 
 
-        pygame.init()
-        fonts = load_fonts("Fonts")
-        title_font = pygame.font.Font(fonts['OldSansBlack'],30)
-        normal_font = pygame.font.Font(fonts['OldSansBlack'],15)
-        sprites = load_sprites("Sprites")
-        sounds = load_sounds("Sounds")
-        state = gr._env.rand_state
-        game = Match3(8,8,7,10,sprites,gr,state)
-        game.run()
-        
-            
     pygame.quit()
     quit()
+
 

@@ -15,6 +15,8 @@ class Match3ActionValueTable(ActionValueTable):
         '''
         Return the action with the maximal value for the given state.
         This is a slightly modified form of ActionValueTable.getMaxAction.
+
+        Method inherited from Pybrain.ActionValueTable
         '''
         values = self.params.reshape(self.numRows, self.numColumns)[int(state), :].flatten()
         self.maxvalue = max(values)
