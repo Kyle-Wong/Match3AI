@@ -34,10 +34,16 @@ SAVE = True
 LOAD = True
 COMPARE_AGAINST_RANDOM = False
 STREAK_HISTOGRAM = False
-
+def join_to_base_path(rel_path):
+    try:
+        base_path = sys._MEI
+    except:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, rel_path)
 def load_params(file_name,action_value_table):
-    current_path = os.path.dirname(os.path.realpath(__file__))
-    file_path = os.path.join(current_path,file_name)
+    #current_path = os.path.dirname(os.path.realpath(__file__))
+    #file_path = os.path.join(current_path,file_name)
+    file_path = join_to_base_path(file_name)
     if os.path.getsize(file_path) <= 0:
         return
 
@@ -46,8 +52,9 @@ def load_params(file_name,action_value_table):
     print("Loading: " + str(controller.params))
     
 def save_params(file_name,action_value_table):
-    current_path = os.path.dirname(os.path.realpath(__file__))
-    file = open(os.path.join(current_path,file_name),'wb')
+    #current_path = os.path.dirname(os.path.realpath(__file__))
+    file_path = join_to_base_path(file_name)
+    file = open(file_path,'wb')
     pickle.dump(controller.params,file)
     print("Saving: " + str(controller.params))
 

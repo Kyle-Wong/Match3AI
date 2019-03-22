@@ -49,13 +49,22 @@ class State(Enum):
     CLEARING = 2
     SETTLING = 3
 
+
+def join_to_base_path(rel_path):
+    try:
+        base_path = sys._MEI
+    except:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, rel_path)
+
 def load_sprites(folder):
     '''
     Loads all sprites in the Match3AI/Sprites folder into the sprites dictionary.
     Key is file name (without extensions) and Value is a Surface of the sprite.
     '''
-    current_path = os.path.dirname(os.path.realpath(__file__))
-    sprite_path = os.path.join(current_path,folder)
+    #current_path = os.path.dirname(os.path.realpath(__file__))
+    #sprite_path = os.path.join(current_path,folder)
+    sprite_path = join_to_base_path(folder)
     sprites = {}
     for file in os.listdir(sprite_path):
         sprites[file.split('.')[0]] = pygame.image.load(os.path.join(sprite_path,file))
@@ -68,8 +77,9 @@ def load_fonts(folder):
     Loads all fonts in the Match3AI/Fonts folder into the Fonts dictionary.
     Key is file name (without extensions) and Value is the Path to the Font file
     '''
-    current_path = os.path.dirname(os.path.realpath(__file__))
-    font_path = os.path.join(current_path,folder)
+    #current_path = os.path.dirname(os.path.realpath(__file__))
+    #font_path = os.path.join(current_path,folder)
+    font_path = join_to_base_path(folder)
     fonts = {}
     for file in os.listdir(font_path):
         fonts[file.split('.')[0]] = os.path.join(font_path,file)
@@ -82,8 +92,9 @@ def load_sounds(folder):
     Loads all fonts in the Match3AI/Fonts folder into the Fonts dictionary.
     Key is file name (without extensions) and Value is the pygame sound object
     '''
-    current_path = os.path.dirname(os.path.realpath(__file__))
-    sound_path = os.path.join(current_path,folder)
+    #current_path = os.path.dirname(os.path.realpath(__file__))
+    #sound_path = os.path.join(current_path,folder)
+    sound_path = join_to_base_path(folder)
     sounds = {}
     for file in os.listdir(sound_path):
         print(file.split('.')[0])
@@ -94,8 +105,9 @@ def load_sounds(folder):
     return sounds
 
 def load_params(file_name,action_value_table):
-    current_path = os.path.dirname(os.path.realpath(__file__))
-    file_path = os.path.join(current_path,file_name)
+    #current_path = os.path.dirname(os.path.realpath(__file__))
+    #file_path = os.path.join(current_path,file_name)
+    file_path = join_to_base_path(file_name)
     if os.path.getsize(file_path) <= 0:
         return
 
@@ -103,11 +115,11 @@ def load_params(file_name,action_value_table):
     controller._setParameters(pickle.load(file))
     print("Loading: " + str(controller.params))
 def save_params(file_name,action_value_table):
-    current_path = os.path.dirname(os.path.realpath(__file__))
-    file = open(os.path.join(current_path,file_name),'wb')
+    #current_path = os.path.dirname(os.path.realpath(__file__))
+    file_path = join_to_base_path(file_name)
+    file = open(file_path,'wb')
     pickle.dump(controller.params,file)
     print("Saving: " + str(controller.params))
-
 
 
 
